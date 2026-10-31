@@ -1,0 +1,5 @@
+{
+  "_note": "Figures as supplied in the production brief (Eurostat). Foreign-born residents on 1 January 2025; immigration arrivals during 2024.",
+  "foreign_born_2025_m": {"DE": 17.2, "FR": 9.6, "ES": 9.5, "IT": 6.9, "NL": 3.0, "SE": 2.2},
+  "arrivals_2024_m": {"ES": 1.289, "DE": 1.079}
+}
