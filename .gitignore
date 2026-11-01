@@ -1,3 +1,6 @@
 __pycache__/
 output/stills/
 audio/voice/t*.wav
+
+**/output/stills/
+**/audio/final_mix.wav
