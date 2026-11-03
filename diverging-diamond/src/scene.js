@@ -3,6 +3,10 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const W = 1080, H = 1920;
 const SEG = window.SEGMENTS || [];
@@ -50,6 +54,8 @@ scene.fog = new THREE.Fog(0xcfe3f2, 140, 330);
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.45;
 const camera = new THREE.PerspectiveCamera(50, W / H, 0.3, 600);
+const composer = new EffectComposer(renderer); composer.setSize(W, H); composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(W / 2, H / 2), 0.16, 0.4, 0.985)); composer.addPass(new OutputPass());
 const out = document.getElementById('out'); const ctx = out.getContext('2d');
 
 const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.7, metalness: 0, ...o });
@@ -81,7 +87,7 @@ const sun = new THREE.DirectionalLight(0xfff2dc, 2.6); sun.position.set(40, 70, 
 Object.assign(sun.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 10, far: 200 }); sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05; scene.add(sun);
 const sky = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 16), new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, fog: false,
   vertexShader: 'varying vec3 vp; void main(){ vp = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }',
-  fragmentShader: 'varying vec3 vp; void main(){ float y = clamp(vp.y,0.,1.); gl_FragColor = vec4(mix(vec3(0.84,0.92,0.98), vec3(0.36,0.62,0.95), pow(y,0.5)),1.); }' }));
+  fragmentShader: 'varying vec3 vp; void main(){ float y = clamp(vp.y,0.,1.); gl_FragColor = vec4(pow(mix(vec3(0.84,0.92,0.98), vec3(0.36,0.62,0.95), pow(y,0.5)), vec3(2.2)),1.); }' }));
 scene.add(sky);
 const clouds = [];
 for (let i = 0; i < 12; i++) { const g = new THREE.Group(); const n = 3 + Math.floor(R() * 3); for (let k = 0; k < n; k++) { const s = mesh(new THREE.SphereGeometry(4 + R() * 4, 14, 10), mat.cloud, false, false); s.position.set(k * 5 - n * 2.5, R() * 2, R() * 3); s.scale.y = 0.6; g.add(s); } g.position.set(-200 + R() * 400, 70 + R() * 30, -260 + R() * 120); g.userData = { x0: g.position.x, sp: 0.6 + R() }; scene.add(g); clouds.push(g); }
@@ -133,6 +139,15 @@ for (const [k, pts] of Object.entries(RAMPS)) {
 function tree(x, z, s) { const g = new THREE.Group(); const tr = mesh(new THREE.CylinderGeometry(0.25 * s, 0.35 * s, 3 * s, 7), mat.trunk); tr.position.y = 1.5 * s; g.add(tr); const c = mesh(new THREE.ConeGeometry(1.6 * s, 4.2 * s, 9), R() < 0.5 ? mat.leaf : mat.leaf2); c.position.y = 4.5 * s; g.add(c); g.position.set(x, 0, z); scene.add(g); }
 for (let i = 0; i < 70; i++) { const x = (R() - 0.5) * 260, z = (R() < 0.5 ? -1 : 1) * (22 + R() * 110); if (Math.abs(x) < 12) continue; if (Math.abs(z) < 30 && Math.abs(x) < 60) continue; tree(x, z, 0.8 + R() * 0.8); }
 for (let i = 0; i < 10; i++) { const g = new THREE.Group(); const b = box(6, 4, 6, mat.house); b.position.y = 2; g.add(b); const r = mesh(new THREE.ConeGeometry(5, 2.6, 4), mat.roof); r.position.y = 5.3; r.rotation.y = Math.PI / 4; g.add(r); const s = R() < 0.5 ? -1 : 1; g.position.set(s * (25 + R() * 60), 0, (R() < 0.5 ? -1 : 1) * (40 + R() * 70)); g.rotation.y = R() * 3; scene.add(g); }
+
+// street lamps and bushes along the local road
+for (const z of [-90, -66, -44, -30, 30, 44, 66, 90]) for (const sd of [-1, 1]) {
+  const g = new THREE.Group(); const p = mesh(new THREE.CylinderGeometry(0.09, 0.13, 6.5, 8), mat.pole); p.position.y = 3.25; g.add(p);
+  const a = box(1.8, 0.12, 0.16, mat.pole); a.position.set(-0.9 * sd, 6.4, 0); g.add(a);
+  const l = box(0.7, 0.18, 0.4, new THREE.MeshStandardMaterial({ color: 0xfff6d8, emissive: 0xfff1c0, emissiveIntensity: 0.6 })); l.position.set(-1.6 * sd, 6.3, 0); g.add(l);
+  g.position.set(sd * (ROAD_HW + 1.4), 0, z); scene.add(g);
+}
+for (let i = 0; i < 80; i++) { const sd = R() < 0.5 ? -1 : 1; const z = (R() < 0.5 ? -1 : 1) * (30 + R() * 90); const b = mesh(new THREE.IcosahedronGeometry(0.6 + R() * 0.5, 1), R() < 0.5 ? mat.leaf : mat.leaf2); b.position.set(sd * (ROAD_HW + 3 + R() * 6), 0.35, z); b.scale.y = 0.75; scene.add(b); }
 
 // ---------------------------------------------------------------- lanes (morph from normal to diverging diamond)
 const XO = 22; // crossover distance from bridge centre
@@ -460,7 +475,7 @@ function overlay(t) {
 
 window.renderFrame = (t, q = 0.92) => {
   placeDashes(t); placeStatic(t); placeTraffic(t); placeCamera(t);
-  renderer.render(scene, camera);
+  composer.render();
   ctx.clearRect(0, 0, W, H); ctx.drawImage(glCanvas, 0, 0); overlay(t);
   return out.toDataURL('image/jpeg', q);
 };
