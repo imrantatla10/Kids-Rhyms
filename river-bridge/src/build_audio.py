@@ -6,7 +6,7 @@ import json, os, re, subprocess
 import numpy as np
 
 SR = 48000
-DUR = float(os.environ.get("DUR", "64.5"))
+DUR = float(os.environ.get("DUR", "61.5"))
 N = int(DUR * SR)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 rng = np.random.default_rng(3)

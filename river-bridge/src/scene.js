@@ -6,7 +6,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const W = 1080, H = 1920;
 const SEG = window.SEGMENTS || [];
-const DUR = window.DUR || 64.5;
+const DUR = window.DUR || 61.5;
 
 // ---------------------------------------------------------------- helpers
 const cl = (x) => Math.min(1, Math.max(0, x));

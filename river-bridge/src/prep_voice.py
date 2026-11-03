@@ -9,8 +9,9 @@ import numpy as np
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 V = os.path.join(ROOT, "audio", "voice")
 SR = 48000
-VOICE_START = 1.2      # short establishing shot + title before the narration
-MAX_GAP = 0.45         # cap long pauses
+VOICE_START = float(os.environ.get("VOICE_START", "0.6"))   # short establishing shot before the narration
+MAX_GAP = float(os.environ.get("MAX_GAP", "0.3"))           # cap long pauses
+VOICE_LEN = float(os.environ.get("VOICE_LEN", "59.6"))      # target narration length (pitch-preserving tempo)
 
 src = sys.argv[1]
 raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", src, "-ar", str(SR), "-ac", "1", "-f", "f32le", "-"], capture_output=True, check=True).stdout
@@ -36,12 +37,13 @@ keep.append((t, last))
 fade = int(0.008 * SR); parts = []
 for a, b in keep:
     p = x[int(a * SR):int(b * SR)].copy(); p[:fade] *= np.linspace(0, 1, fade); p[-fade:] *= np.linspace(1, 0, fade); parts.append(p)
-y = np.concatenate([np.zeros(int(VOICE_START * SR), np.float32)] + parts)
+y = np.concatenate(parts)
+tempo = max(1.0, len(y) / SR / VOICE_LEN)
 tmp = os.path.join(V, "_v.f32"); y.astype(np.float32).tofile(tmp)
 subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-f", "f32le", "-ar", str(SR), "-ac", "1", "-i", tmp,
-                "-af", "highpass=f=70,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120", os.path.join(V, "voice.wav")], check=True)
+                "-af", f"atempo={tempo:.5f},adelay={int(VOICE_START * 1000)},highpass=f=70,acompressor=threshold=-18dB:ratio=2.5:attack=8:release=120", os.path.join(V, "voice.wav")], check=True)
 os.remove(tmp)
-print(f"voice: {len(y)/SR:.2f}s (pauses capped: {len(runs)})")
+print(f"tight voice {len(y)/SR:.2f}s, tempo {tempo:.3f}, pauses capped: {len(runs)}")
 
 # transcribe the placed voice for word timings
 model_dir = sys.argv[2] if len(sys.argv) > 2 else os.environ.get("WHISPER_MODEL", "small")
