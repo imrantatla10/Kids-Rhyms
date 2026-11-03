@@ -321,8 +321,8 @@ B["fewer"] = Wt("fewer"); B["painted"] = Wt("painted"); B["signs"] = Wt("signs")
 
 sfx = np.zeros((2, N))
 r2 = np.random.default_rng(9)
-for k in range(28):  # general traffic pass-bys
-    add(sfx, passby(1.2 + r2.random(), 70 + r2.random() * 40), 0.3 + k * 2.3 + r2.random(), 0.08, pan=r2.uniform(-0.7, 0.7))
+# general traffic pass-bys removed (sounded like running water)
+# removed (water-like noise): add(sfx, passby(1.2 + r2.random(), 70 + r2.random() * 40), 0.3 + k * 2.3 + r2.random(), 0.08, pan=r2.uniform(-0.7, 0.7))
 add(sfx, honk(), B["left1"] + 0.6, 0.45); add(sfx, honk(0.3), B["guess"] + 0.2, 0.4)
 add(sfx, screech(0.9), B["crash"] - 0.75, 0.55)
 add(sfx, crunch(0.8), B["crash"] - 0.15, 0.8); add(sfx, thud(55, 0.5), B["crash"] - 0.15, 0.8)
@@ -330,11 +330,11 @@ for i in range(3): add(sfx, beep_click(), B["arrow"] - 0.2 + i * 0.12, 0.5)
 add(sfx, ding(), B["arrow"], 0.35)
 for i in range(3): add(sfx, pop(), B["three"] - 0.2 + i * 0.22, 0.45)
 for i in range(4): add(sfx, honk(0.25), B["backs"] + 0.3 + i * 0.45, 0.2, pan=(i % 2 - 0.5))
-add(sfx, whoosh(0.9), B["flip"] - 0.2, 0.6); add(sfx, shimmer(1.2), B["flip"] + 0.2, 0.35)
-add(sfx, whoosh(0.4), B["swap"] - 0.1, 0.4); add(sfx, ding(), B["noone"], 0.4)
+add(sfx, shimmer(1.2), B["flip"] + 0.2, 0.35)  # whoosh removed
+add(sfx, ding(), B["noone"], 0.4)  # whoosh removed
 add(sfx, shimmer(1.4), B["diverging"] - 0.3, 0.45)
-add(sfx, passby(1.0, 110), B["headlights"] - 0.2, 0.5, pan=0.5)
-add(sfx, thud(60, 0.5), B["wall"], 0.7); add(sfx, rumble(0.6), B["wall"] - 0.2, 0.35)
+# removed (water-like noise): add(sfx, passby(1.0, 110), B["headlights"] - 0.2, 0.5, pan=0.5)
+add(sfx, thud(60, 0.5), B["wall"], 0.7)  # rumble removed
 for i in range(4): add(sfx, beep_click(), B["turns"] - 0.5 + i * 0.5, 0.4)
 for i in range(3): add(sfx, pop(), B["phases"] - 0.6 + i * 0.12, 0.35)
 add(sfx, boing(0.4), B["phases"] + 0.2, 0.15)
@@ -342,15 +342,14 @@ for i in range(16): add(sfx, step(), B["walkers"] + i * 0.2, 0.25, pan=(i % 2 - 
 add(sfx, ding(), B["walls"], 0.3)
 add(sfx, pop(), B["springfield"], 0.6); add(sfx, ding(), B["y2009"], 0.3)
 for i in range(30): add(sfx, pop(), B["hundred"] - 0.6 + i * 0.045, 0.18, pan=r2.uniform(-0.6, 0.6))
-add(sfx, whoosh(0.6), B["fewer"], 0.4); add(sfx, ding(), B["fewer"] + 0.6, 0.35)
-for i in range(8): add(sfx, spray(), B["painted"] - 0.2 + i * 0.06, 0.25)
+add(sfx, ding(), B["fewer"] + 0.6, 0.35)  # whoosh removed
+# removed (water-like noise): for i in range(8): add(sfx, spray(), B["painted"] - 0.2 + i * 0.06, 0.25)
 for i in range(4): add(sfx, pop(), B["signs"] - 0.15 + i * 0.1, 0.35)
 add(sfx, honk(0.3), B["confused"], 0.3); add(sfx, boing(0.5), B["confused"] + 0.4, 0.2)
 add(sfx, fanfare(), B["congrats"], 0.6)
 for i in range(8): add(sfx, pop(), B["congrats"] + i * 0.07, 0.22, pan=(i % 2 - 0.5))
 add(sfx, ding(), B["diamond2"] + 0.2, 0.45)
-for tc in (B["but1"], B["so1"], B["so2"], B["diverging"] - 0.6, B["headlights"] - 0.6, B["walkers"] - 0.3, B["first"], B["fewer"] - 1.4, B["painted"] - 0.5, B["congrats"]):
-    add(sfx, whoosh(0.35), tc - 0.15, 0.2)
+# cut whooshes removed (sounded like running water)
 
 raw = subprocess.run(["ffmpeg", "-loglevel", "error", "-i", os.path.join(ROOT, "audio", "voice", "voice.wav"), "-ar", str(SR), "-ac", "1", "-f", "f32le", "-"], capture_output=True, check=True).stdout
 v = np.frombuffer(raw, np.float32).astype(np.float64)
