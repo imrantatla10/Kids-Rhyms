@@ -17,7 +17,7 @@ There are instanced grass blades, procedural grass, concrete and mud textures, a
 
 ## Audio
 - **Voice:** ElevenLabs `eleven_v4`, *Jesse – Animation Character, Friendly* (`rLl4PSDTzX3VHL4wjSFI`), 61.3 s at natural speed.
-- **SFX:** impact-sprinkler ticks, spray, mud squelches, the concrete pour, drain gurgle, metal clanks, the arch rolling, the foam cannon, the pump motor,
+- **SFX (no water sounds, voice boosted, mix at −12 LUFS):** the concrete pour, metal clanks, the arch rolling, the foam cannon, the pump motor,
   the high-pressure jet, drips, RO hum, blowers and a final ding. All of it is synthesised in `src/build_audio.py`. There is no music.
 
 ## Rebuild
