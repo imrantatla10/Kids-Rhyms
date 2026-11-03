@@ -7,8 +7,8 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-const W = 1080, H = 1920;
-const DUR = window.DUR || 39.6;
+const W = 1920, H = 1080;
+const DUR = window.DUR || 62.5;
 const ENV = window.ENV || [];
 const cl = (x) => Math.min(1, Math.max(0, x));
 const st = (a, b, t) => cl((t - a) / (b - a));
@@ -18,10 +18,12 @@ const eo = (x) => 1 - Math.pow(1 - x, 3);
 function rng(seed) { return () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const R = rng(9);
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
-const env = (t) => { const i = Math.floor(t * 30); return ENV[i] || 0; };
+const OFF = 7.6; // the speech starts at 8.0 s (comedy intro before it)
+const env = (t) => { const i = Math.floor((t - OFF) * 30); return i >= 0 ? (ENV[i] || 0) : 0; };
 
 // story beats (seconds, audio starts at 0.4 s)
-const T = { land: 0.4, step: 2.4, girl: 4.46, truth: 8.9, barr: 13.42, hands: 17.54, blood: 21.7, phone: 23.52, love: 25.86, ask: 27.48, answer: 30.16, auto: 33.8, meet: 37.0, end: 38.3 };
+const T = Object.fromEntries(Object.entries({ land: 0.4, step: 2.4, girl: 4.46, truth: 8.9, barr: 13.42, hands: 17.54, blood: 21.7, phone: 23.52, love: 25.86, ask: 27.48, answer: 30.16, auto: 33.8, meet: 37.0, end: 38.3 }).map(([k, v]) => [k, v + OFF]));
+const E = { squeal: 47.2, shove: 48.4, land: 49.5, run: 49.0, guard: 50.0, sit: 53.2, wide: 56.5 };
 
 // ---------------------------------------------------------------- renderer
 const glCanvas = document.createElement('canvas'); glCanvas.width = W; glCanvas.height = H;
@@ -140,9 +142,12 @@ function makeHuman(o) {
   const hair = mesh(new THREE.SphereGeometry(0.119, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.5), hairM); hair.scale.set(0.86, 1.06, 0.98); hair.position.set(0, 0.135, -0.01); hair.rotation.x = -0.55; head.add(hair);
   if (o.ponytail) { const pt = mesh(new THREE.CapsuleGeometry(0.03, 0.18, 4, 10), hairM); pt.position.set(0, 0.03, -0.11); pt.rotation.x = 0.3; head.add(pt); }
   // dupatta: hood over the head + drapes
+  if (!o.noDup) {
   const hood = mesh(new THREE.SphereGeometry(0.135, 40, 20, Math.PI * 0.7, Math.PI * 1.6, 0.0, Math.PI * 0.72), dup); hood.scale.set(0.9, 1.08, 1.0); hood.position.set(0, 0.12, -0.012); hood.material.side = THREE.DoubleSide; head.add(hood);
   if (o.drape === 'wrap') { spine.add(ribbon([V3(-0.11, 0.62, 0.02), V3(-0.13, 0.5, 0.06), V3(-0.08, 0.42, 0.13), V3(0.05, 0.36, 0.15), V3(0.12, 0.2, 0.15), V3(0.1, -0.05, 0.14), V3(0.06, -0.25, 0.13)], 0.15, dup)); spine.add(ribbon([V3(0.11, 0.62, 0.02), V3(0.13, 0.5, 0.0), V3(0.17, 0.42, -0.04), V3(0.18, 0.2, -0.08), V3(0.17, -0.1, -0.1)], 0.13, dup)); }
   else { for (const s of [-1, 1]) spine.add(ribbon([V3(s * 0.11, 0.62, 0.02), V3(s * 0.15, 0.5, 0.03), V3(s * 0.19, 0.4, 0.04), V3(s * 0.2, 0.15, 0.08), V3(s * 0.2, -0.15, 0.1)], 0.14, dup)); spine.add(ribbon([V3(-0.19, 0.38, -0.05), V3(0, 0.3, -0.13), V3(0.19, 0.38, -0.05)], 0.12, dup)); }
+  }
+  if (o.cap) { const cp = mesh(new THREE.CylinderGeometry(0.11, 0.115, 0.07, 24), M(o.cap)); cp.position.set(0, 0.215, -0.005); head.add(cp); const vz = mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.012, 24, 1, false, -Math.PI / 2, Math.PI), M(0x111111)); vz.position.set(0, 0.185, 0.06); head.add(vz); }
   if (o.earring) for (const s of [-1, 1]) { const er = mesh(new THREE.SphereGeometry(0.008, 10, 8), new THREE.MeshPhysicalMaterial({ color: 0x5a3aa0, metalness: 0.8, roughness: 0.1 }), false); er.position.set(s * 0.098, 0.085, 0.005); head.add(er); }
   // arms & hands
   P.arms = []; for (const s of [-1, 1]) { const sh = new THREE.Group(); sh.position.set(s * 0.19, 0.4, 0); spine.add(sh); const up = mesh(new THREE.CapsuleGeometry(0.045, 0.22, 4, 12), o.gown ? fabric(0x141416) : kam); up.position.y = -0.14; sh.add(up); const el = new THREE.Group(); el.position.y = -0.28; sh.add(el); const lo = mesh(new THREE.CapsuleGeometry(o.gown ? 0.05 : 0.038, 0.2, 4, 12), o.gown ? fabric(0x141416) : kam); lo.position.y = -0.13; el.add(lo); const cuff = mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.04, 12), skin); cuff.position.y = -0.255; el.add(cuff);
@@ -159,6 +164,7 @@ function pose(h, p, t) {
   P.mouth.scale.set(1.3, 0.2 + d.mouth * 2.2, 0.4); P.lower.position.y = 0.047 - d.mouth * 0.01;
 }
 const cm = makeHuman({ skin: 0xe8b99a, kameez: 0x5b2a86, pants: 0x3c1d5e, dupatta: 0x5d2d92, hair: 0x2a1a12, gown: true, drape: 'wrap', earring: true, lips: 0xb0605a, shoe: 0x1a1a1a, sheer: true });
+const guard = makeHuman({ skin: 0xa86b3c, kameez: 0x5f6b3a, pants: 0x4a5430, hair: 0x111111, noDup: true, cap: 0x2a2f1c, shoe: 0x111111 });
 const girl = makeHuman({ skin: 0xd7a07a, kameez: 0xd9577a, pants: 0xf2ece4, dupatta: 0xf6e7ee, hair: 0x1a1210, ponytail: true, lips: 0xa85a55, shoe: 0x8a5a3a });
 // girl's phone + diary + pen
 const phoneG = new THREE.Group(); { const b = mesh(new RoundedBoxGeometry(0.075, 0.15, 0.009, 2, 0.008), M(0x18191c, { metalness: 0.6, roughness: 0.3 })); phoneG.add(b); const s = mesh(new THREE.PlaneGeometry(0.068, 0.14), new THREE.MeshStandardMaterial({ color: 0x223344, emissive: 0x6a8fbf, emissiveIntensity: 0.5, roughness: 0.1 }), false); s.position.z = 0.0048; phoneG.add(s); }
@@ -177,6 +183,11 @@ const girlHandMeshes = []; girl.userData.P.arms.forEach((A) => A.hand.traverse((
 // blood drops
 const drops = [...Array(6)].map(() => { const d = mesh(new THREE.SphereGeometry(0.004, 8, 6), new THREE.MeshPhysicalMaterial({ color: 0x8a0a12, roughness: 0.1, clearcoat: 1 }), false); d.scale.y = 1.6; scene.add(d); return d; });
 
+const GRAIN = 260; const grain = new THREE.InstancedMesh(new THREE.SphereGeometry(0.012, 6, 4), M(0xe0b64a, { roughness: 0.7 }), GRAIN); grain.frustumCulled = false; scene.add(grain);
+const grainV = [...Array(GRAIN)].map(() => [(R() - 0.5) * 3, 1.5 + R() * 3, (R() - 0.5) * 3]);
+const pile = new THREE.Group(); scene.add(pile);
+{ const g = new RoundedBoxGeometry(0.9, 0.38, 0.55, 3, 0.15); for (let y = 0; y < 3; y++) for (let i = 0; i < 3 - y; i++) for (let j = 0; j < 2; j++) { const b = mesh(g, burlap); b.position.set((i - (2 - y) / 2) * 0.92, 0.2 + y * 0.36, j * 0.58); b.rotation.y = (R() - 0.5) * 0.2; pile.add(b); } pile.position.set(-1.35, 0, 2.15); pile.rotation.y = 0.75; }
+const PILE_TOP = V3(-1.25, 0.95, 2.05);
 // ---------------------------------------------------------------- stage set (podium shots)
 const STG = V3(0, 0, 80);
 const stage = new THREE.Group(); stage.position.copy(STG); scene.add(stage);
@@ -194,19 +205,21 @@ const PATH = [V3(-10.2, 0, 4.6), V3(-8, 0, 3.0), V3(-4.5, 0, 1.4), V3(-1.0, 0, 0
 const pathC = new THREE.CatmullRomCurve3(PATH);
 function placeStory(t) {
   // helicopter descends and lands, rotor slows a little after landing
-  const land = eo(st(0, T.step - 0.2, t)); heli.position.set(HELI_POS.x, lerp(9, 0.95, land), HELI_POS.z); heli.rotation.set(0, 0.5 - (1 - land) * 0.3, (1 - land) * 0.05);
+  const app = eio(st(0, 5.5, t)); const desc = st(5.5, 7.6, t); const bump = Math.max(0, Math.sin(st(7.6, 8.4, t) * Math.PI * 2)) * 0.35 * (1 - st(7.6, 8.4, t));
+  heli.position.set(lerp(36, HELI_POS.x, app), lerp(16, 9, app) - (9 - 0.95) * eo(desc) + bump, lerp(-10, HELI_POS.z, app));
+  heli.rotation.set(Math.sin(t * 3.1) * 0.08 * (1 - st(7.6, 8.2, t)), 0.5 + (1 - app) * 0.9, (Math.sin(t * 2.3) * 0.12 + 0.15) * (1 - st(7.4, 8.0, t)));
   rotor.rotation.y = t * 28; tailRotor.rotation.z = t * 60; heli.userData.door.rotation.y = -1.6 * eo(st(T.step - 0.3, T.step + 0.4, t));
-  dust.forEach((d, i) => { const g = cl((1 - Math.abs(heli.position.y - 1) / 9)); const ph = (t * d.sp * 0.4 + i / dust.length) % 1; d.s.position.set(HELI_POS.x + Math.cos(d.a) * (d.r + ph * 5), 0.3 + ph * 1.5, HELI_POS.z + Math.sin(d.a) * (d.r + ph * 5)); const sz = 2 + ph * 5; d.s.scale.set(sz, sz, 1); d.s.material.opacity = 0.45 * g * Math.sin(ph * Math.PI) * (1 - st(T.girl, T.truth, t)); });
+  dust.forEach((d, i) => { const g = cl((1 - Math.abs(heli.position.y - 1) / 9)) * (1 + 1.5 * st(7.6, 8.0, t) * (1 - st(9.5, 11, t))); const ph = (t * d.sp * 0.4 + i / dust.length) % 1; d.s.position.set(HELI_POS.x + Math.cos(d.a) * (d.r + ph * 5), 0.3 + ph * 1.5, HELI_POS.z + Math.sin(d.a) * (d.r + ph * 5)); const sz = 2 + ph * 5; d.s.scale.set(sz, sz, 1); d.s.material.opacity = Math.min(0.9, 0.45 * g * Math.sin(ph * Math.PI)) * (1 - st(T.girl, T.truth, t)); const big = st(7.6, 8.2, t) * (1 - st(9.8, 11.2, t)); if (big > 0) { d.s.position.x += (7 + ph * 9) * big * Math.cos(d.a) * 0.5 + 6 * big; d.s.scale.multiplyScalar(1 + big * 1.5); } });
   // crowd idle
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
   crowdP.forEach((c, i) => { if (!c) { m4.makeScale(0, 0, 0); cBody.setMatrixAt(i, m4); cHead.setMatrixAt(i, m4); cHair.setMatrixAt(i, m4); return; } const excite = t > T.love - 1 ? 1 : 0.3; const b = Math.abs(Math.sin(t * 3 + c.ph)) * 0.03 * excite; m4.compose(V3(c.x, 0.58 * c.h + b, c.z), q.identity(), V3(1, c.h, 1)); cBody.setMatrixAt(i, m4); m4.compose(V3(c.x, 1.26 * c.h + b, c.z + 0.02), q, V3(1, 1, 1)); cHead.setMatrixAt(i, m4); m4.compose(V3(c.x, 1.29 * c.h + b, c.z), q, V3(1, 1, 1)); cHair.setMatrixAt(i, m4); });
   [cBody, cHead, cHair].forEach((m) => { m.instanceMatrix.needsUpdate = true; });
   // barricade panel the girl pushes through
-  const push = st(T.barr + 0.5, T.barr + 1.6, t); const bp = barriers[5]; bp.rotation.set(0, -0.6 * eo(push), -0.18 * eo(push)); bp.position.set(0.25 + 0.5 * eo(push), 0, -3 + 0.6 * eo(push));
+  barriers.forEach((b, i) => { const k = i - 5; const t0 = T.barr + 1.5 + Math.abs(k) * 0.18; const f = k >= -3 ? eo(st(t0, t0 + 0.35, t)) : 0; b.rotation.set(Math.PI / 2 * 0.97 * f, 0, 0); b.position.y = 0.02 * f; });
   // --- speaker (CM)
   let cmPos = V3(-10.2, 0.0, 4.6), cmRy = 2.2, cmP = {};
-  if (t < T.step - 0.1) { cmPos.set(HELI_POS.x + 0.3, heli.position.y - 0.95 + 0.05, HELI_POS.z + 0.2); cm.visible = t > 1.2; cmRy = 1.1; }
-  else if (t < T.girl) { const u = eio(st(T.step, T.girl + 4, t)); const p = pathC.getPointAt(u * 0.5); cmPos.copy(p); cmRy = Math.atan2(pathC.getTangentAt(u * 0.5).x, pathC.getTangentAt(u * 0.5).z); const ph = Math.sin(t * 6.5) * 0.35; cmP = { lL: ph, lR: -ph, kL: Math.max(0, -ph) * 0.6, kR: Math.max(0, ph) * 0.6, aL: [-ph * 0.4, 0.1, 0], aR: [ph * 0.4, 0.1, 0], bob: Math.abs(Math.cos(t * 6.5)) * 0.012, hy: -0.2 }; cm.visible = true; }
+  if (t < T.step + 1.2) { cmPos.set(HELI_POS.x + 0.6 + eo(st(T.step - 0.2, T.step + 0.6, t)) * 0.9, 0, HELI_POS.z + 1.1); cm.visible = t > T.step - 0.3; cmRy = 1.0; const w = st(T.step + 0.4, T.step + 0.8, t); cmP = { aR: [lerp(0.05, 2.8, w), lerp(0.08, 0.3, w), 0], eR: 0.2 + Math.sin(t * 9) * 0.25 * w, aL: [0.1, 0.5 * w, 0], eL: 1.6 * w, hx: -0.1 * w, hz: 0.1 * w }; }
+  else if (t < T.girl) { const u = eio(st(T.step + 1.2, T.girl + 4, t)); const p = pathC.getPointAt(u * 0.5); cmPos.copy(p); cmRy = Math.atan2(pathC.getTangentAt(u * 0.5).x, pathC.getTangentAt(u * 0.5).z); const ph = Math.sin(t * 6.5) * 0.35; cmP = { lL: ph, lR: -ph, kL: Math.max(0, -ph) * 0.6, kR: Math.max(0, ph) * 0.6, aL: [-ph * 0.4, 0.1, 0], aR: [ph * 0.4, 0.1, 0], bob: Math.abs(Math.cos(t * 6.5)) * 0.012, hy: -0.2 }; cm.visible = true; }
   else { cmPos.copy(pathC.getPointAt(0.5)); cmRy = 1.3; cm.visible = t > T.barr - 0.5; }
   if (t >= T.barr && t < T.love - 0.6) { const u = eio(st(T.barr, T.love - 0.6, t)); cmPos.copy(pathC.getPointAt(lerp(0.5, 1, u))); const ph = Math.sin(t * 6.5) * 0.3 * (u < 1 ? 1 : 0); cmRy = Math.atan2(1.1 - cmPos.x, -0.6 - cmPos.z) * 0 + 0.9; cmP = { lL: ph, lR: -ph, kL: Math.max(0, -ph) * 0.6, kR: Math.max(0, ph) * 0.6, aL: [-ph * 0.4, 0.1, 0], aR: [ph * 0.4, 0.1, 0], bob: Math.abs(Math.cos(t * 6.5)) * 0.012 * (u < 1 ? 1 : 0) }; cm.visible = true; }
   // meeting the girl: CM at (0.6, 0.5) facing the girl at (1.3, -0.25)
@@ -224,9 +237,9 @@ function placeStory(t) {
   let gp = V3(1.1, 0, -3.65), gRy = 0, gP = { aR: [0.35, 0.05, 0], eR: 1.45, aL: [0.1, 0.1, 0], hx: -0.05, hy: -0.4 };
   if (t < T.girl) { gp.set(1.1, 0, -3.65); gP.hy = -0.5 + Math.sin(t) * 0.1; }
   if (t >= T.girl && t < T.barr) { gP = { aR: [0.4 + Math.sin(t * 3) * 0.05, 0.05, 0], eR: 1.5, aL: [0.25, 0.1, 0], eL: 0.4, hx: -0.08, hy: -0.35 + Math.sin(t * 0.8) * 0.2, bob: Math.abs(Math.sin(t * 4)) * 0.01 }; }
-  if (t >= T.barr && t < T.hands) { const u = st(T.barr, T.hands - 0.3, t); const squeeze = st(T.barr + 0.4, T.barr + 1.8, t); gp.set(lerp(1.1, 1.3, u), 0, lerp(-3.65, -0.25, eio(u))); gRy = 0.1; const ph = Math.sin(t * 8) * 0.4 * (u > 0.35 && u < 0.98 ? 1 : 0); gP = { aL: [lerp(0.3, 1.4, squeeze), lerp(0.1, 0.5, squeeze), 0], eL: 0.3, aR: [lerp(0.9, 1.3, squeeze), 0.4, 0], eR: 0.5, lean: 0.35 * squeeze * (1 - st(T.barr + 2.2, T.barr + 2.8, t)), lL: ph, lR: -ph, kL: Math.max(0, -ph) * 0.7, kR: Math.max(0, ph) * 0.7, hx: 0.1, bob: Math.abs(Math.cos(t * 8)) * 0.015 * (ph ? 1 : 0) }; }
+  if (t >= T.barr && t < T.hands) { const stuck = st(T.barr + 0.2, T.barr + 0.5, t) * (1 - st(T.barr + 1.35, T.barr + 1.5, t)); girl.scale.set(1 - stuck * 0.28 + Math.sin(t * 40) * 0.02 * stuck, 1 + stuck * 0.08, 1); const u0 = st(T.barr, T.hands - 0.3, t); const u = u0 < 0.12 ? u0 : (t < T.barr + 1.45 ? 0.12 : lerp(0.12, 1, eo(st(T.barr + 1.45, T.barr + 2.4, t)))); const squeeze = st(T.barr + 0.4, T.barr + 1.8, t); gp.set(lerp(1.1, 1.3, u), 0, lerp(-3.65, -0.25, eio(u))); gRy = 0.1; const ph = Math.sin(t * 8) * 0.4 * (u > 0.35 && u < 0.98 ? 1 : 0); gP = { aL: [lerp(0.3, 1.4, squeeze), lerp(0.1, 0.5, squeeze), 0], eL: 0.3, aR: [lerp(0.9, 1.3, squeeze), 0.4, 0], eR: 0.5, lean: 0.35 * squeeze * (1 - st(T.barr + 2.2, T.barr + 2.8, t)), lL: ph, lR: -ph, kL: Math.max(0, -ph) * 0.7, kR: Math.max(0, ph) * 0.7, hx: 0.1, bob: Math.abs(Math.cos(t * 8)) * 0.015 * (ph ? 1 : 0) }; }
   if (t >= T.hands) { gp.copy(gPos); gRy = Math.atan2(0.55 - gPos.x, 0.45 - gPos.z);
-    const trem = Math.sin(t * 31) * 0.035 + Math.sin(t * 23) * 0.02;
+    const trem = (Math.sin(t * 31) * 0.07 + Math.sin(t * 23) * 0.04) * (t < T.love ? 1 : 0.4);
     gP = { aR: [0.5, -0.12, 0.1], eR: 1.35 + trem, wR: trem * 2, aL: [0.5, -0.18, 0], eL: 1.35 + trem, wL: -0.3 + trem, hx: 0.3, bob: trem * 0.05 };
     if (t >= T.love - 0.3) { gP.hx = lerp(0.25, -0.15, st(T.love - 0.3, T.love + 0.4, t)); }
     if (t >= T.answer) { const talk = env(t); gP = { aR: [0.45, -0.1, 0.1], eR: 1.4 + trem * 0.6, aL: [0.45, -0.15, 0], eL: 1.35, hx: -0.18, hz: Math.sin(t * 2) * 0.05, mouth: talk * 0.6, bob: 0 }; }
@@ -234,6 +247,7 @@ function placeStory(t) {
     if (t >= T.meet + 0.4) { gP.mouth = 0; gP.hx = -0.1; gP.hz = 0.12; }
   }
   if (t >= T.answer && t < T.meet + 0.2) {} else if (t >= T.meet + 0.2) {}
+  if (!(t >= T.barr && t < T.hands)) girl.scale.set(1, 1, 1);
   girl.position.copy(gp); girl.rotation.y = gRy; pose(girl, gP, t);
   // CM speaks on stage
   // wounds appear once she is through the barricade
@@ -242,6 +256,32 @@ function placeStory(t) {
   drops.forEach((d, i) => { const hand = girl.userData.P.arms[i % 2].hand; const hp = hand.getWorldPosition(new THREE.Vector3()); const ph = ((t * 0.7 + i * 0.37) % 1); d.visible = t > T.blood - 0.3 && t < T.phone; d.position.set(hp.x + (i - 3) * 0.006, hp.y - 0.09 - ph * ph * 0.6, hp.z + 0.01); });
   diary.visible = t > T.auto - 0.2; phoneG.visible = t < T.auto + 0.4 || true;
   drawSig(st(T.auto + 0.5, T.meet + 0.3, t));
+}
+function placeEnding(t) {
+  // guard: idle near the barricade, then chases the girl
+  const gPath = new THREE.CatmullRomCurve3([V3(1.3, 0, -0.25), V3(2.8, 0, 0.7), V3(6, 0, 2.2), V3(12, 0, 3.4), V3(24, 0, 5)]);
+  if (t < E.guard) { guard.position.set(3.6, 0, -2.3); guard.rotation.y = Math.PI + 0.3 + Math.sin(t * 0.4) * 0.2; pose(guard, { aL: [0.1, 0.1, 0], aR: [0.1, 0.1, 0], hy: Math.sin(t * 0.5) * 0.3, hx: t > E.shove ? -0.2 : 0, mouth: t > E.shove ? 0.8 : 0 }, t); }
+  else { const u = st(E.guard + 0.3, DUR + 3, t) * 0.92; const pp = gPath.getPointAt(Math.min(1, u)); const start = V3(3.6, 0, -2.3); const k = st(E.guard, E.guard + 0.8, t); guard.position.copy(start.clone().lerp(pp, k)); const tg = gPath.getTangentAt(Math.min(1, u)); guard.rotation.y = Math.atan2(tg.x, tg.z); const ph = Math.sin(t * 15) * 0.8; pose(guard, { lL: ph, lR: -ph, kL: Math.max(0, -ph), kR: Math.max(0, ph), aL: [-ph * 0.8, 0.1, 0], aR: [2.6, 0.2, 0], eR: 0.3 + Math.sin(t * 15) * 0.3, lean: 0.25, bob: Math.abs(Math.cos(t * 15)) * 0.05, mouth: 0.9, hx: -0.15 }, t); }
+  grain.visible = t > E.land - 0.05;
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
+  for (let i = 0; i < GRAIN; i++) { const a = t - E.land; const v = grainV[i]; if (a < 0) { m4.makeScale(0, 0, 0); } else { const tt = Math.min(a, 1.4); m4.compose(V3(PILE_TOP.x + v[0] * tt, Math.max(0.01, PILE_TOP.y + v[1] * tt - 4.9 * tt * tt), PILE_TOP.z + v[2] * tt), q, V3(1, 1, 1)); } grain.setMatrixAt(i, m4); }
+  grain.instanceMatrix.needsUpdate = true;
+  if (t < E.squeal) return;
+  const gPos = V3(1.3, 0, -0.25), cPos = V3(0.55, 0, 0.45);
+  // --- girl: squeal + jump, shove, run away with the diary held high
+  let gp = gPos.clone(), gry = Math.atan2(cPos.x - gPos.x, cPos.z - gPos.z), gP;
+  if (t < E.shove - 0.2) { const j = Math.abs(Math.sin(st(E.squeal, E.shove - 0.2, t) * Math.PI * 3)); gp.y = j * 0.22; gP = { aL: [2.7, 0.3, 0], eL: 0.15, wL: -0.2, aR: [2.5, -0.3, 0], eR: 0.3, hx: -0.25, mouth: 0.9, kL: j * 0.8, kR: j * 0.8, lL: -j * 0.3, lR: -j * 0.3 }; }
+  else if (t < E.run + 0.4) { const th = eo(st(E.shove - 0.2, E.shove + 0.15, t)); gP = { aR: [1.5, -0.15, 0], eR: lerp(1.4, 0.05, th), aL: [2.6, 0.3, 0], eL: 0.2, lean: 0.35 * th, hx: 0.1, mouth: 0.6, lL: -0.3 * th, kR: 0.3 }; }
+  else { const u = st(E.run + 0.4, DUR + 2, t); const pp = gPath.getPointAt(Math.min(1, u * 1.05)); gp.copy(pp); const tg = gPath.getTangentAt(Math.min(1, u)); gry = Math.atan2(tg.x, tg.z); const ph = Math.sin(t * 17) * 0.9; gP = { lL: ph, lR: -ph, kL: Math.max(0, -ph) * 1.1, kR: Math.max(0, ph) * 1.1, aL: [2.8, 0.2, 0], eL: 0.1, aR: [-ph * 0.9, 0.15, 0], eR: 0.8, lean: 0.28, bob: Math.abs(Math.cos(t * 17)) * 0.07, mouth: 0.7, hx: -0.1 }; }
+  girl.scale.set(1, 1, 1); girl.position.copy(gp); girl.rotation.y = gry; pose(girl, gP, t);
+  // --- speaker: shoved backwards into the sacks, then sits up dizzy
+  const fl = st(E.shove, E.land, t);
+  let cp = cPos.clone(), rx = 0, cP = { aR: [0.5, 0, 0], eR: 1.2, aL: [0.4, 0.1, 0], eL: 1.0, hx: 0.15, mouth: 0.2 };
+  if (t < E.shove) { cP = { aR: [0.4, 0.1, 0], eR: 0.6, aL: [0.3, 0.1, 0], eL: 0.4, hx: 0.1, mouth: 0.25 }; }
+  else if (fl < 1) { cp.lerpVectors(cPos, PILE_TOP.clone().add(V3(0.1, -0.55, 0)), eo(fl)); cp.y += Math.sin(fl * Math.PI) * 0.6; rx = -1.25 * eo(fl); const w = t * 22; cP = { aR: [Math.sin(w) * 2 + 1, 0.6, 0], eR: 0.3, aL: [Math.cos(w) * 2 + 1, 0.6, 0], eL: 0.3, lL: -0.6 * fl, lR: -0.2 * fl, hx: -0.4, mouth: 1 }; }
+  else { cp.copy(PILE_TOP).add(V3(0.1, -0.55, 0)); const sit = eo(st(E.sit, E.sit + 1.2, t)); rx = lerp(-1.25, -0.35, sit); const legs = 1 - st(E.land, E.land + 0.8, t) * 0.5; cP = { lL: lerp(-1.4, -0.9, sit) * legs, lR: lerp(-1.1, -0.9, sit) * legs, kL: 0.3 * sit, kR: 0.4 * sit, aL: [lerp(2.5, 0.2, st(E.land, E.land + 0.6, t)), 0.9, 0], eL: 0.3, aR: [lerp(2.2, 0.6, st(E.land, E.land + 0.6, t)), 0.9, 0], eR: 0.5 + sit * 0.8, hz: Math.sin(t * 6) * 0.2 * sit, hy: Math.sin(t * 4) * 0.3 * sit, hx: 0.1, mouth: 0.5 + Math.sin(t * 5) * 0.2, blink: (t > E.sit && Math.floor(t * 2.5) % 3 === 0) ? 1 : 0 }; }
+  cm.visible = true; cm.position.copy(cp); cm.rotation.set(rx, Math.atan2(gPos.x - cPos.x, gPos.z - cPos.z), 0, 'YXZ'); pose(cm, cP, t);
+  diary.visible = true; drawSig(1);
 }
 // stage: CM at the podium (separate copy of the look is the same character moved for these shots)
 function placeStage(t) {
@@ -257,8 +297,9 @@ function placeStage(t) {
 function headW(h) { return h.userData.P.head.getWorldPosition(new THREE.Vector3()).add(V3(0, 0.1, 0)); }
 function handW(h, i) { return h.userData.P.arms[i].hand.getWorldPosition(new THREE.Vector3()); }
 let SHOTS = [
-  [-1, 2.3, (u) => ({ p: V3(lerp(6, 2, eio(u)), lerp(16, 8, eio(u)), lerp(20, 14, eio(u))), g: V3(-9, lerp(6, 2, u), 3), f: 42 })],
-  [2.3, T.girl, (u) => ({ p: V3(lerp(-7.2, -6.6, u), 1.4, lerp(7.4, 6.8, u)), g: V3(-9.8, 1.5, 4.2), f: 36 })],
+  [-1, 5.2, (u) => ({ p: V3(lerp(14, 2, eio(u)), lerp(9, 6, u), lerp(24, 20, eio(u))), g: heli.position.clone(), f: 34 })],
+  [5.2, 8.7, (u) => ({ p: V3(lerp(-2.5, -3.5, u), 1.5, lerp(9.5, 9.0, u)), g: heli.position.clone().add(V3(0, 0.5, 0)), f: 36 })],
+  [8.7, T.girl, (u) => ({ p: V3(lerp(-5.6, -6.2, u), 1.5, lerp(9.6, 8.6, u)), g: V3(-9.6, 1.4, 4.8), f: 32 })],
   [T.girl, T.truth - 0.1, (u) => ({ p: V3(lerp(4.5, 2.4, eio(u)), lerp(1.8, 1.55, u), lerp(2.2, -0.9, eio(u))), g: V3(1.1, 1.45, -3.6), f: lerp(38, 30, u) })],
   [T.truth - 0.1, T.barr, (u) => ({ p: STG.clone().add(V3(lerp(0.55, 0.35, u), lerp(2.15, 2.1, u), lerp(2.1, 1.8, u))), g: STG.clone().add(V3(0, 2.15, 0)), f: 30 })],
   [T.barr, T.hands - 0.1, (u, t) => { const g = girl.position.clone(); return { p: V3(lerp(3.2, 3.6, u), 0.9, lerp(-1.0, 1.5, u)), g: g.clone().add(V3(0, 1.0, 0)), f: 40 }; }],
@@ -268,7 +309,12 @@ let SHOTS = [
   [T.ask - 0.1, T.answer, (u) => { const g = headW(girl); return { p: g.clone().add(V3(-1.1, 0.15, 1.5)), g: headW(girl).lerp(headW(cm), 0.5).add(V3(0, -0.15, 0)), f: 34 }; }],
   [T.answer, T.auto, (u) => { const g = headW(girl); return { p: g.clone().add(V3(lerp(-0.7, -0.6, u), 0.03, lerp(1.0, 0.85, u))), g: g.clone().add(V3(0, -0.06, 0)), f: 30 }; }],
   [T.auto, T.meet, (u) => { const d = diary.getWorldPosition(new THREE.Vector3()); return { p: d.clone().add(V3(0.45, 0.55, 0.85)), g: d.clone().add(V3(-0.1, 0.1, 0)), f: 34 }; }],
-  [T.meet, DUR + 1, (u, t) => { const e = eio(st(T.meet, DUR, t)); return { p: V3(lerp(2.8, 5, e), lerp(1.6, 4.5, e), lerp(2.4, 7, e)), g: V3(0.9, lerp(1.3, 1.1, e), 0.1), f: 38 }; }],
+  [T.meet, E.squeal, (u) => ({ p: V3(lerp(3.2, 3.0, u), 1.55, lerp(2.6, 2.3, u)), g: V3(0.9, 1.35, 0.1), f: 30 })],
+  [E.squeal, E.shove - 0.2, (u) => { const g = headW(girl); return { p: V3(g.x - 0.6, 1.45, g.z + 1.7), g: g.clone().add(V3(0, -0.15, 0)), f: 30 }; }],
+  [E.shove - 0.2, E.run + 1.2, (u) => ({ p: V3(lerp(4.6, 4.2, u), 1.3, lerp(4.2, 4.6, u)), g: V3(-0.2, 0.9, 1.0), f: 34 })],
+  [E.run + 1.2, E.sit - 0.2, (u, t) => { const g = girl.position.clone(); return { p: g.clone().add(V3(-2.6, 1.0, 3.2)), g: g.clone().add(V3(0.6, 1.0, 0)), f: 34 }; }],
+  [E.sit - 0.2, E.wide, (u) => ({ p: V3(lerp(0.9, 0.7, u), 1.2, lerp(3.9, 3.6, u)), g: PILE_TOP.clone().add(V3(0.1, 0.3, 0)), f: 30 })],
+  [E.wide, DUR + 1, (u, t) => { const e = eio(st(E.wide, DUR, t)); return { p: V3(lerp(2, -2, e), lerp(2.2, 7, e), lerp(7.5, 13, e)), g: V3(lerp(1, 4, e), lerp(1, 1.5, e), 1.5), f: 38 }; }],
 ];
 function placeCamera(t) { const s = SHOTS.find((x) => t >= x[0] && t < x[1]) || SHOTS[SHOTS.length - 1]; const u = cl((t - Math.max(0, s[0])) / (s[1] - Math.max(0, s[0]))); const c = s[2](u, t); camera.position.copy(c.p).add(V3(Math.sin(t * 0.9) * 0.012, Math.sin(t * 1.2) * 0.01, 0)); camera.fov = c.f; camera.updateProjectionMatrix(); camera.lookAt(c.g); }
 function overlay(t) {
@@ -276,7 +322,7 @@ function overlay(t) {
   const fade = Math.max(1 - st(0, 0.4, t), st(DUR - 0.7, DUR, t)); if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, W, H); }
 }
 window.renderFrame = (t, q = 0.92) => {
-  placeStory(t); const onStage = placeStage(t);
+  cm.rotation.set(0, cm.rotation.y, 0, 'YXZ'); placeStory(t); placeEnding(t); const onStage = placeStage(t);
   scene.updateMatrixWorld(true); placeCamera(t);
   composer.render(); ctx.clearRect(0, 0, W, H); ctx.drawImage(glCanvas, 0, 0); overlay(t);
   return out.toDataURL('image/jpeg', q);

@@ -4,7 +4,7 @@
 const http = require('http'), fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
 const { chromium } = require('playwright');
 const ROOT = path.resolve(__dirname, '..');
-const FPS = 30, DUR = +(process.env.DUR || 39.6), NFR = Math.round(FPS * DUR);
+const FPS = 30, DUR = +(process.env.DUR || 62.5), NFR = Math.round(FPS * DUR);
 const FRAMES = process.env.FRAMES_DIR || path.join(ROOT, 'output', 'frames');
 const WORKERS = +(process.env.WORKERS || 4);
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.woff2': 'font/woff2' };
@@ -21,7 +21,7 @@ function serve() {
 }
 async function openPage(port) {
   const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const p = await b.newPage({ viewport: { width: 1080, height: 1920 } });
+  const p = await b.newPage({ viewport: { width: 1920, height: 1080 } });
   p.on('pageerror', (e) => console.error('PAGE ERROR', e.message));
   p.on('console', (m) => { if (m.type() === 'error') console.error('console:', m.text()); });
   const seg = fs.readFileSync(path.join(ROOT, 'audio/voice/segments.json'), 'utf8');

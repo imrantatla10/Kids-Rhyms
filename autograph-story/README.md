@@ -1,6 +1,6 @@
 # The Autograph – 3D re-enactment of a speech anecdote
 
-A vertical 9:16 video, 1080×1920 at 30 fps, **39.6 s** long, with no captions and no AI voice.
+A **horizontal 16:9** comedy video, 1920×1080 at 30 fps, **62.5 s** long. It has no text of any kind and no AI voice. There is light background music and comedy SFX.
 The only voice is the speaker's original audio from the supplied clip (`audio/voice/source_clip.mp4`), lightly denoised.
 The scenes act out what she describes, line by line:
 
@@ -24,3 +24,11 @@ Both characters are stylised, semi-realistic 3D. They are not photoreal likeness
 npm install
 node src/render.js            # audio/final_mix.wav = original voice + a soft helicopter during the landing
 ```
+
+## Comedy version (current)
+- **0–8 s:** the helicopter wobbles in and lands with a bump, and a dust cloud blows over the crowd. She steps out and waves (to music).
+- **8–47 s:** her speech (the scenes above). The girl gets stuck in the barricade, pops through with a "boing", and the barricades fall like dominoes.
+- **47–62.5 s:** after the autograph, the girl squeals, **shoves her and runs off** with the diary held high while a guard chases her with a whistle.
+  The speaker lands in the grain sacks with a burst of grain, then a sad trombone plays, she sits up dizzy, and the crowd laughs.
+- **Audio:** `src/build_audio.py` contains her original voice (boosted) plus a light bouncy music bed, ducked under the speech. The SFX are a helicopter, a bump/boing, a crowd cheer,
+  creaks and clangs, scribbles, squeals, a whoosh/bonk, a slide whistle, a thud, footsteps, a police whistle, synthesised laughter and a sad trombone.
