@@ -68,6 +68,7 @@ const floor = mesh(new THREE.PlaneGeometry(14, 14), new THREE.MeshStandardMateri
 const wallM = M(0xe9dccb, { roughness: 0.9 }), wallM2 = M(0xd7c4ad, { roughness: 0.9 });
 const backWall = box(14, 6, 0.2, wallM); backWall.position.set(0, 3, -5); room.add(backWall);
 const leftWall = box(0.2, 6, 14, wallM2); leftWall.position.set(-5.5, 3, 0); room.add(leftWall);
+for (const [w, h, d, x, y, z, m] of [[0.2, 6, 14, 6.5, 3, 0, wallM2], [14, 6, 0.2, 0, 3, 8.5, wallM], [14, 0.2, 14, 0, 6, 0, M(0xf6f0e6, { roughness: 0.95 })]]) { const o = mesh(new THREE.BoxGeometry(w, h, d), m, false, true); o.position.set(x, y, z); room.add(o); }
 const skirt = box(14, 0.18, 0.06, M(0xffffff)); skirt.position.set(0, 0.09, -4.88); room.add(skirt);
 // window with daylight / later ambulance lights
 const winGlow = new THREE.MeshStandardMaterial({ color: 0xcfe9ff, emissive: 0xcfe9ff, emissiveIntensity: 0.9 });
@@ -414,7 +415,7 @@ function overlay(t) {
     if (t > T.hard - 0.1) { const s = pop(t - T.hard + 0.1); ctx.save(); ctx.translate(b.x - 230, b.y - 120); ctx.scale(s, s); ctx.strokeStyle = '#fff'; ctx.fillStyle = '#fff'; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(0, -70); ctx.lineTo(0, 70); ctx.moveTo(-30, -70); ctx.lineTo(30, -70); ctx.moveTo(-30, 70); ctx.lineTo(30, 70); ctx.stroke(); txt('5 cm', 0, 120, 60, '#ffd23f'); ctx.restore(); }
   }
   // tempo: pulsing heart + beat bar
-  if (t > T.fast - 0.05 && t < T.not - 0.05) { const c = compress(t); heartIcon(W / 2, 300, 0.7 + c * 0.25); const s = pop(t - T.hundred + 0.2); if (s > 0) { ctx.save(); ctx.translate(W / 2, 600); ctx.scale(s, s); txt('100–120', 0, 0, 110, '#ffffff'); txt('/ min', 0, 90, 56, '#ff8fa3'); ctx.restore(); } if (t > T.beat - 0.2) { for (let i = 0; i < 4; i++) { const ph = ((t * BPM / 60 + i * 0.25) % 1); ctx.fillStyle = `rgba(255,214,61,${1 - ph})`; ctx.font = '90px Fredoka'; ctx.textAlign = 'center'; ctx.fillText('♪', W / 2 - 300 + i * 200, 780 - ph * 120); } } }
+  if (t > T.fast - 0.05 && t < T.not - 0.05) { const c = compress(t); heartIcon(W / 2, 300, 0.7 + c * 0.25); const s = pop(t - T.hundred + 0.2); if (s > 0) { ctx.save(); ctx.translate(W / 2, 1330); ctx.scale(s, s); txt('100–120', 0, 0, 110, '#ffffff'); txt('/ min', 0, 90, 56, '#ff8fa3'); ctx.restore(); } if (t > T.beat - 0.2) { for (let i = 0; i < 4; i++) { const ph = ((t * BPM / 60 + i * 0.25) % 1); ctx.fillStyle = `rgba(255,214,61,${1 - ph})`; ctx.font = '90px Fredoka'; ctx.textAlign = 'center'; ctx.fillText('♪', W / 2 - 300 + i * 200, 780 - ph * 120); } } }
   // skip the breaths
   if (t > T.skip - 0.15 && t < T.then - 0.05) noBreath(W / 2, 420, pop(t - T.skip + 0.15) * 0.9);
   // AED shock
