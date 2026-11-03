@@ -38,7 +38,7 @@ lighting, shadows and reflections) with 2D cartoon overlays such as comic bursts
 - **Voice:** the supplied voiceover (`audio/voice/voiceover_original.mp3`, 77.6 s). `src/prep_voice.py` caps
   pauses at 0.2 s and applies a pitch-preserving 1.11× tempo, so the narration fits 66 s. Word timings came from
   a local Whisper-small transcription (`audio/voice/segments.json`), and they drive the captions and the scene cuts.
-- **Music & SFX:** an original 112 BPM comedy groove synthesised in `src/build_audio.py`. It uses pizzicato, marimba, bass and drums,
+- **SFX (background music removed on request; `MUSIC_GAIN=1` restores it):** an original 112 BPM comedy groove synthesised in `src/build_audio.py`. It uses pizzicato, marimba, bass and drums,
   with a music-box section at night and a fanfare at the end. More than 40 cartoon SFX play, including thuds, crunch, clangs, rumble, digging, a concrete pour,
   wind, clicks, lift motors, a vroom, tweets, a glass shimmer, light switches, keypad beeps, an error buzz and the kick.
   The music ducks under the voice, and the mix is loudness-normalised to −14 LUFS.

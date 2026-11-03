@@ -350,7 +350,8 @@ voice = np.zeros(N); voice[:min(N, len(v))] = v[:N]
 venv = lp_fast(np.abs(voice), int(0.08 * SR))
 duck = 1 - 0.6 * np.clip(venv / (np.percentile(venv, 90) + 1e-9), 0, 1)
 duck = lp_fast(duck, int(0.15 * SR))
-music = (mus + drums) * 0.75
+MUSIC_GAIN = float(os.environ.get("MUSIC_GAIN", "0"))  # background music removed on request (SFX + voice only)
+music = (mus + drums) * 0.75 * MUSIC_GAIN
 music *= duck
 music[:, :int(0.3 * SR)] *= np.linspace(0, 1, int(0.3 * SR))
 fo = int(1.2 * SR); music[:, -fo:] *= np.linspace(1, 0, fo)
