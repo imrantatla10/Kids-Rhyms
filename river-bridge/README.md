@@ -19,7 +19,7 @@ the goat falls off (SPLOOSH) → railings → confetti, "YOU INVENTED THE BRIDGE
 ## Audio
 - **Voice:** ElevenLabs `eleven_v4`, cartoon character voice *Stevie – The Living Cartoon* (`IvUJKFyjVb5hItY9dJAT`). Script: `script.txt`.
   `src/prep_voice.py` caps pauses at 0.3 s, applies a 1.09× pitch-preserving tempo so the narration fits about 60 s, places it at 0.6 s and transcribes word timings (`audio/voice/segments.json`) with Whisper-small.
-- **SFX only, with no background music:** water ambience, plops, splashes, chops, a tree crash, creaks, hammering, an engine,
+- **SFX only, with no background music and no constant water ambience:** plops, splashes, chops, a tree crash, creaks, hammering, an engine,
   clangs, a goat bleat and a fanfare. All of it is synthesised in `src/build_audio.py`, ducked under the voice and normalised to −14 LUFS.
 
 ## Rebuild

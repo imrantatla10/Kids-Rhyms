@@ -268,7 +268,7 @@ B["goat"] = Wt("goat"); B["falling"] = Wt("falling"); B["railings"] = Wt("railin
 B["swim"] = Wt("swim"); B["pizza"] = Wt("pizza")
 
 sfx = np.zeros((2, N))
-amb = river(DUR); add(sfx, amb, 0, 0.18)
+# constant river ambience removed on request (too loud)
 add(sfx, pop(), B["pizza"] - 0.1, 0.4)
 add(sfx, boing(0.4), B["swim"], 0.15)
 for i in range(6): add(sfx, plop(), B["stones"] - 0.25 + i * 0.16 + 0.3, 0.45, pan=(i - 2.5) / 5)
@@ -294,7 +294,7 @@ for i in range(4): add(sfx, plop(), B["hammer"] + (i >> 1) * 0.55 + (i & 1) * 0.
 add(sfx, thud(70, 0.4), B["beam"] + 0.1, 0.5)
 add(sfx, ding(), B["genius"], 0.5)
 add(sfx, vroom(2.0), B["shorter"], 0.35)
-add(sfx, wind(3.5) * 0.5 + river(3.5)[:int(3.5 * SR)] * 0.7, B["current"] - 0.3, 0.6)
+add(sfx, wind(3.5) * 0.5, B["current"] - 0.3, 0.35)
 for i in range(5): add(sfx, creak(0.5), B["current"] + 0.6 + i * 0.6, 0.35)
 for i in range(4): add(sfx, clang(380, 0.4), B["diagonal"] + i * 0.16 + 0.2, 0.35)
 add(sfx, ding(), B["triangles"] + 0.1, 0.35)
