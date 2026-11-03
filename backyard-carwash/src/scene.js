@@ -147,7 +147,7 @@ const paintM = carMaterial(0x14408f, { rough: 0.22, metal: 0.6 });
 const glassM = carMaterial(0x0c1218, { rough: 0.02, metal: 0.2, clear: 1, extra: { transparent: true, opacity: 0.82 } });
 const trimM = new THREE.MeshStandardMaterial({ color: 0x111214, roughness: 0.45, metalness: 0.4 });
 const chromeM = new THREE.MeshStandardMaterial({ color: 0xdfe3e8, roughness: 0.12, metalness: 1 });
-const tireM = new THREE.MeshStandardMaterial({ color: 0x18191b, roughness: 0.85 });
+const tireM = new THREE.MeshStandardMaterial({ color: 0x26272a, roughness: 0.8 });
 const rimM = new THREE.MeshStandardMaterial({ color: 0xc8ccd2, roughness: 0.25, metalness: 1 });
 const car = new THREE.Group(); scene.add(car);
 function profileShape(pts) { const s = new THREE.Shape(); s.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) s.lineTo(pts[i][0], pts[i][1]); s.closePath(); return s; }
@@ -181,7 +181,7 @@ const wheels = [];
     const w = new THREE.Group(); w.position.set(x, 0.35, z);
     const tg = new THREE.LatheGeometry(prof, 40); tg.rotateZ(Math.PI / 2); w.add(mesh(tg, tireM));
     const rim = mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.2, 32), rimM); rim.rotation.z = Math.PI / 2; w.add(rim);
-    for (let k = 0; k < 5; k++) { const sp = mesh(new THREE.BoxGeometry(0.03, 0.38, 0.07), rimM); sp.position.x = Math.sign(x) * 0.105; sp.rotation.x = k * Math.PI * 2 / 5; w.add(sp); }
+    for (let k = 0; k < 10; k++) { const sp = mesh(new THREE.BoxGeometry(0.02, 0.4, 0.035), rimM); sp.position.x = Math.sign(x) * 0.105; sp.rotation.x = k * Math.PI * 2 / 10; w.add(sp); } const lip = mesh(new THREE.TorusGeometry(0.215, 0.012, 8, 40), chromeM); lip.rotation.y = Math.PI / 2; lip.position.x = Math.sign(x) * 0.105; w.add(lip);
     const hub = mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 16), chromeM); hub.rotation.z = Math.PI / 2; w.add(hub);
     car.add(w); wheels.push(w);
   } }
@@ -229,10 +229,10 @@ const foamM = new THREE.MeshStandardMaterial({ color: 0xfbfbf8, roughness: 0.6 }
 const FOAM = 900; const foamBits = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.045, 1), foamM, FOAM); foamBits.frustumCulled = false; scene.add(foamBits);
 const foamSeeds = [...Array(FOAM)].map(() => { const u = R(); return { z: (R() - 0.5) * 4.4, side: R() < 0.7 ? (R() < 0.5 ? -1 : 1) : 0, y: 0.4 + R() * 1.0, x: (R() - 0.5) * 1.2, s: 0.6 + R() * 1.4 }; });
 // macro: a water bead on the hood leaving mineral spots
-const bead = mesh(new THREE.SphereGeometry(0.03, 32, 16), new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0, transmission: 0, transparent: true, opacity: 0.55, metalness: 0.1, envMapIntensity: 2 }), false); bead.scale.y = 0.45; scene.add(bead);
-const mineralRing = mesh(new THREE.RingGeometry(0.022, 0.03, 40), new THREE.MeshStandardMaterial({ color: 0xe6e6e0, roughness: 0.9, transparent: true, opacity: 0 }), false); mineralRing.rotation.x = -Math.PI / 2; scene.add(mineralRing);
-const MINS = 60; const minerals = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.0018, 0), new THREE.MeshStandardMaterial({ color: 0xfafaf2, roughness: 0.8 }), MINS); scene.add(minerals);
-const BEAD_POS = V3(0.15, 1.005, 1.55);
+const bead = mesh(new THREE.SphereGeometry(0.03, 32, 16), new THREE.MeshPhysicalMaterial({ color: 0xeaf4ff, roughness: 0, transparent: true, opacity: 0.7, metalness: 0.2, clearcoat: 1, envMapIntensity: 3 }), false); bead.scale.y = 0.45; scene.add(bead);
+const mineralRing = mesh(new THREE.RingGeometry(0.026, 0.0285, 48), new THREE.MeshStandardMaterial({ color: 0xe6e6e0, roughness: 0.9, transparent: true, opacity: 0 }), false); mineralRing.rotation.x = -Math.PI / 2; scene.add(mineralRing);
+const MINS = 60; const minerals = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.0009, 0), new THREE.MeshStandardMaterial({ color: 0xfafaf2, roughness: 0.8 }), MINS); scene.add(minerals);
+const BEAD_POS = (() => { car.updateMatrixWorld(true); const rc = new THREE.Raycaster(V3(0.15, 5, 1.45), V3(0, -1, 0)); const hit = rc.intersectObject(car, true)[0]; return V3(0.15, (hit ? hit.point.y : 1.05) + 0.004, 1.45); })();
 
 // ---------------------------------------------------------------- state over time
 function archZ(t) {
