@@ -59,7 +59,7 @@ const save = (file, url) => fs.writeFileSync(file, Buffer.from(url.slice(url.ind
   }));
   srv.close();
   const audio = path.join(ROOT, 'audio', 'final_mix.wav');
-  const outF = path.join(ROOT, 'output', 'Autograph_Story_3D_vertical.mp4');
+  const outF = path.join(ROOT, 'output', 'Autograph_Story_Comedy_3D_horizontal.mp4');
   const args = ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(FRAMES, 'f%05d.jpg')];
   if (fs.existsSync(audio)) args.push('-i', audio);
   args.push('-c:v', 'libx264', '-preset', 'slow', '-crf', '19', '-pix_fmt', 'yuv420p', '-profile:v', 'high', '-movflags', '+faststart');
