@@ -322,7 +322,7 @@ B["fewer"] = Wt("fewer"); B["painted"] = Wt("painted"); B["signs"] = Wt("signs")
 sfx = np.zeros((2, N))
 r2 = np.random.default_rng(9)
 for k in range(28):  # general traffic pass-bys
-    add(sfx, passby(1.2 + r2.random(), 70 + r2.random() * 40), 0.3 + k * 2.3 + r2.random(), 0.16, pan=r2.uniform(-0.7, 0.7))
+    add(sfx, passby(1.2 + r2.random(), 70 + r2.random() * 40), 0.3 + k * 2.3 + r2.random(), 0.08, pan=r2.uniform(-0.7, 0.7))
 add(sfx, honk(), B["left1"] + 0.6, 0.45); add(sfx, honk(0.3), B["guess"] + 0.2, 0.4)
 add(sfx, screech(0.9), B["crash"] - 0.75, 0.55)
 add(sfx, crunch(0.8), B["crash"] - 0.15, 0.8); add(sfx, thud(55, 0.5), B["crash"] - 0.15, 0.8)
@@ -357,7 +357,8 @@ v = np.frombuffer(raw, np.float32).astype(np.float64)
 voice = np.zeros(N); voice[:min(N, len(v))] = v[:N]
 venv = lp_fast(np.abs(voice), int(0.08 * SR))
 duck = lp_fast(1 - 0.6 * np.clip(venv / (np.percentile(venv, 90) + 1e-9), 0, 1), int(0.15 * SR))
-music = (mus + drums) * 0.45 * duck
+MUSIC_GAIN = float(os.environ.get("MUSIC_GAIN", "0"))  # background music removed on request
+music = (mus + drums) * 0.45 * duck * MUSIC_GAIN
 music[:, :int(0.3 * SR)] *= np.linspace(0, 1, int(0.3 * SR))
 fo = int(1.0 * SR); music[:, -fo:] *= np.linspace(1, 0, fo)
 mix = music + sfx * 0.6 * (0.7 + 0.3 * duck) + voice[None, :]

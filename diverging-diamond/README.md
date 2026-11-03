@@ -16,7 +16,7 @@ the map pin (Springfield, MO, 2009), then 200+ pins → the crash bar halves →
 - **Voice:** ElevenLabs `eleven_v4`, *Jesse – Animation Character, Friendly* (`rLl4PSDTzX3VHL4wjSFI`).
   `src/prep_voice.py` caps pauses at 0.28 s and applies a 1.14× pitch-preserving tempo so the narration fits 65 s.
   It also gets word timings with Whisper-small.
-- **Music + SFX:** an original light 112 BPM groove, ducked under the voice. Sound effects include traffic pass-bys, honks, a tyre screech and crash,
+- **SFX only (background music removed on request; `MUSIC_GAIN=1` restores it).** Sound effects include traffic pass-bys, honks, a tyre screech and crash,
   signal clicks, whooshes, a wall thud, footsteps, pin pops, spray paint and a fanfare. All of it is synthesised in `src/build_audio.py`.
 
 ## Rebuild
