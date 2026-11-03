@@ -4,7 +4,7 @@
 const http = require('http'), fs = require('fs'), path = require('path'), { spawnSync } = require('child_process');
 const { chromium } = require('playwright');
 const ROOT = path.resolve(__dirname, '..');
-const FPS = 30, DUR = +(process.env.DUR || 64.5), NFR = Math.round(FPS * DUR);
+const FPS = 30, DUR = +(process.env.DUR || 65.0), NFR = Math.round(FPS * DUR);
 const FRAMES = process.env.FRAMES_DIR || path.join(ROOT, 'output', 'frames');
 const WORKERS = +(process.env.WORKERS || 4);
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json', '.woff2': 'font/woff2' };

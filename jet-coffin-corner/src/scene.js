@@ -8,7 +8,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const W = 1080, H = 1920;
 const SEG = window.SEGMENTS || [];
-const DUR = window.DUR || 64.5;
+const DUR = window.DUR || 65.0;
 const cl = (x) => Math.min(1, Math.max(0, x));
 const st = (a, b, t) => cl((t - a) / (b - a));
 const lerp = (a, b, u) => a + (b - a) * u;
@@ -44,7 +44,7 @@ const T = B;
 const glCanvas = document.createElement('canvas'); glCanvas.width = W; glCanvas.height = H;
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setSize(W, H, false); renderer.shadowMap.enabled = false;
-renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.1; renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.95; renderer.outputColorSpace = THREE.SRGBColorSpace;
 const scene = new THREE.Scene();
 const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture; scene.environmentIntensity = 0.35;
@@ -94,21 +94,46 @@ const sea = mesh(new THREE.PlaneGeometry(2400, 2400, 1, 1), new THREE.ShaderMate
       col = mix(col, mix(vec3(0.16,0.12,0.35), vec3(1.0,0.62,0.42), dawn), fog);
       gl_FragColor = vec4(pow(col, vec3(2.2)), 1.); }` }));
 sea.rotation.x = -Math.PI / 2; sea.position.y = -60; scene.add(sea);
-// puffy 3D clouds
-const cloudMat = new THREE.MeshStandardMaterial({ color: 0xaeb6d8, roughness: 1, emissive: 0x1a1d38, emissiveIntensity: 0.4, flatShading: false });
+// soft volumetric-looking clouds: clusters of noise-textured sprites
+function cloudTexture(seed) {
+  return canvasTex(256, 256, (g) => {
+    const r = rng(seed); const img = g.createImageData(256, 256);
+    const N = (x, y, f) => { let v = 0, a = 0.5; for (let o = 0; o < 5; o++) { v += a * (Math.sin(x * f * 1.7 + r() * 0) * 0.5 + 0.5) * 0; a *= 0.5; } return v; };
+    // value noise
+    const G = 32, grid = [...Array((G + 1) * (G + 1))].map(() => r());
+    const vn = (x, y) => { const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi; const s = (q) => q * q * (3 - 2 * q); const i = (a, b) => grid[((b % G) * (G + 1) + (a % G))]; const top = i(xi, yi) * (1 - s(xf)) + i(xi + 1, yi) * s(xf); const bot = i(xi, yi + 1) * (1 - s(xf)) + i(xi + 1, yi + 1) * s(xf); return top * (1 - s(yf)) + bot * s(yf); };
+    for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+      const dx = (x - 128) / 128, dy = (y - 128) / 128; const d = Math.sqrt(dx * dx + dy * dy * 1.3);
+      let f = 0, amp = 0.55, fr = 4; for (let o = 0; o < 5; o++) { f += amp * vn(x / 256 * fr, y / 256 * fr); amp *= 0.5; fr *= 2; }
+      const a = Math.max(0, Math.min(1, (1 - d) * 1.6 - 0.2)) * Math.max(0, f * 1.6 - 0.35);
+      const shade = 0.72 + 0.28 * (1 - y / 256);
+      const k = (y * 256 + x) * 4; img.data[k] = img.data[k + 1] = img.data[k + 2] = 255 * shade; img.data[k + 3] = 255 * Math.min(1, a * 1.3);
+    }
+    g.putImageData(img, 0, 0);
+  });
+}
+const cloudTexs = [1, 2, 3, 4].map(cloudTexture);
+const cloudSpriteMats = [];
 const clouds = [];
-for (let i = 0; i < 70; i++) {
-  const g = new THREE.Group(); const n = 5 + Math.floor(R() * 6); const s = 3 + R() * 6;
-  for (let k = 0; k < n; k++) { const b = mesh(new THREE.IcosahedronGeometry(s * (0.6 + R() * 0.6), 2), cloudMat); b.position.set((R() - 0.5) * s * 3, (R() - 0.3) * s * 0.8, (R() - 0.5) * s * 2); b.scale.y = 0.6; g.add(b); }
+for (let i = 0; i < 64; i++) {
+  const g = new THREE.Group(); const n = 7 + Math.floor(R() * 7); const s = 6 + R() * 10;
+  for (let k = 0; k < n; k++) {
+    const m = new THREE.SpriteMaterial({ map: cloudTexs[k % 4], color: 0x9aa6cf, transparent: true, depthWrite: false, opacity: 0.85, rotation: R() * 6.28 });
+    cloudSpriteMats.push(m);
+    const sp = new THREE.Sprite(m); const sz = s * (1.2 + R() * 1.4); sp.scale.set(sz * 1.6, sz, 1);
+    sp.position.set((R() - 0.5) * s * 3.2, (R() - 0.4) * s * 0.6, (R() - 0.5) * s * 2.2); g.add(sp);
+  }
   const band = R();
-  g.userData = { x0: -300 + R() * 600, y0: band < 0.65 ? -45 + R() * 25 : (band < 0.9 ? -15 + R() * 20 : 8 + R() * 20), z0: (R() - 0.5) * 360, sp: 0.85 + R() * 0.3 };
-  if (Math.abs(g.userData.z0) < 25 && g.userData.y0 > -20) g.userData.z0 += 60 * Math.sign(g.userData.z0 || 1);
+  g.userData = { x0: -300 + R() * 600, y0: band < 0.7 ? -48 + R() * 26 : (band < 0.9 ? -16 + R() * 20 : 10 + R() * 18), z0: (R() - 0.5) * 380, sp: 0.85 + R() * 0.3 };
+  if (Math.abs(g.userData.z0) < 30 && g.userData.y0 > -24) g.userData.z0 += 70 * Math.sign(g.userData.z0 || 1);
   scene.add(g); clouds.push(g);
 }
+const cloudMat = { color: new THREE.Color(), emissive: new THREE.Color() };
 // thin-air particles / rain streaks (instanced)
 const dustN = 400; const dust = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 6, 4), new THREE.MeshBasicMaterial({ color: 0xcfe0ff, transparent: true, opacity: 0.7 }), dustN); scene.add(dust);
 const dustP = [...Array(dustN)].map(() => [(R() - 0.5) * 60, (R() - 0.5) * 30, (R() - 0.5) * 40]);
 
+const bolts = [0, 1, 2].map((i) => { const r = rng(40 + i); const pts = []; let x = -60 + i * 70, y = 40, z = -120 - i * 40; for (let k = 0; k < 14; k++) { pts.push(V3(x, y, z)); x += (r() - 0.5) * 14; y -= 6 + r() * 5; z += (r() - 0.5) * 6; } const tube = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.6, 5), new THREE.MeshBasicMaterial({ color: 0xe8efff })); tube.visible = false; scene.add(tube); return tube; });
 // ---------------------------------------------------------------- jet
 const jet = new THREE.Group(); scene.add(jet);
 const jetBody = new THREE.Group(); jet.add(jetBody);
@@ -189,7 +214,7 @@ const labRim = new THREE.PointLight(0x6a8cff, 80, 60, 1.5); labRim.position.copy
 const SL = 16, SP = 40; const flow = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 8, 6), new THREE.MeshBasicMaterial({ color: 0x7fd8ff }), SL * SP); lab.add(flow);
 const labIce = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(0.16, 0), iceMat, 120); foil.add(labIce);
 const labIceP = [...Array(120)].map(() => { const a = (R() - 0.5) * 2.2; return { x: 4.5 - Math.abs(a) * 0.25 + (R() - 0.2) * 0.2, y: a * 0.55, z: (R() - 0.5) * 4.8, s: 0.6 + R(), d: R() }; });
-const liftArrow = new THREE.Group(); { const m = new THREE.MeshStandardMaterial({ color: 0x4ef0a0, emissive: 0x2ec27e, emissiveIntensity: 1.2 }); const sh = mesh(new THREE.CylinderGeometry(0.18, 0.18, 1, 16), m); sh.position.y = 0.5; liftArrow.add(sh); const hd = mesh(new THREE.ConeGeometry(0.45, 0.9, 20), m); hd.position.y = 1.4; liftArrow.add(hd); liftArrow.userData.sh = sh; liftArrow.userData.hd = hd; liftArrow.userData.m = m; }
+const liftArrow = new THREE.Group(); { const m = new THREE.MeshStandardMaterial({ color: 0x4ef0a0, emissive: 0x2ec27e, emissiveIntensity: 0.5, metalness: 0.3, roughness: 0.3 }); const sh = mesh(new THREE.CylinderGeometry(0.18, 0.18, 1, 16), m); sh.position.y = 0.5; liftArrow.add(sh); const hd = mesh(new THREE.ConeGeometry(0.45, 0.9, 20), m); hd.position.y = 1.4; liftArrow.add(hd); liftArrow.userData.sh = sh; liftArrow.userData.hd = hd; liftArrow.userData.m = m; }
 liftArrow.position.set(0.8, 0.8, 2.8); lab.add(liftArrow);
 const shock = mesh(new THREE.PlaneGeometry(0.6, 3), new THREE.MeshBasicMaterial({ color: 0xbfe6ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide })); shock.position.set(-0.6, 1.9, 2.6); lab.add(shock);
 
@@ -201,7 +226,7 @@ const outsideTex = (() => { const c = document.createElement('canvas'); c.width 
 const windshield = mesh(new THREE.PlaneGeometry(7, 3.2), new THREE.MeshBasicMaterial({ map: outsideTex })); windshield.position.set(0, 2.3, -4); cock.add(windshield);
 for (const x of [-3.6, 0, 3.6]) { const p = mesh(new THREE.BoxGeometry(0.25, 3.6, 0.3), M(0x1a1c22)); p.position.set(x, 2.3, -3.9); p.rotation.z = x * 0.04; cock.add(p); }
 const panel = mesh(new THREE.BoxGeometry(8, 1.4, 1.2), M(0x22252c, { roughness: 0.8 })); panel.position.set(0, 0.5, -3.2); cock.add(panel);
-const screens = []; for (const x of [-2.4, -0.8, 0.8, 2.4]) { const c = document.createElement('canvas'); c.width = 256; c.height = 256; const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const s = mesh(new THREE.PlaneGeometry(1.3, 1.1), new THREE.MeshBasicMaterial({ map: tx })); s.position.set(x, 0.75, -2.59); s.rotation.x = -0.25; cock.add(s); screens.push({ c, tx }); }
+const screens = []; for (const x of [-2.4, -0.8, 0.8, 2.4]) { const c = document.createElement('canvas'); c.width = c.height = x === -0.8 ? 768 : 256; const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace; const big = x === -0.8; const s = mesh(new THREE.PlaneGeometry(big ? 1.45 : 1.3, big ? 1.45 : 1.1), new THREE.MeshBasicMaterial({ map: tx })); s.position.set(x, big ? 0.85 : 0.75, -2.59); s.rotation.x = -0.25; cock.add(s); screens.push({ c, tx }); }
 const master = mesh(new THREE.BoxGeometry(0.5, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0x400000, emissive: 0xff2020, emissiveIntensity: 0 })); master.position.set(0, 1.35, -2.75); cock.add(master);
 const masterGlow = glow(0xff2020, 2.0); masterGlow.position.set(0, 1.35, -2.6); cock.add(masterGlow);
 const yokes = [-1.6, 1.6].map((x) => { const g = new THREE.Group(); const col = mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 10), M(0x2a2d33)); col.rotation.x = Math.PI / 2; col.position.z = 0.6; g.add(col); const wheel = mesh(new THREE.TorusGeometry(0.4, 0.06, 10, 24, Math.PI * 1.3), M(0x15171b)); wheel.rotation.z = -Math.PI * 0.15 - Math.PI / 2; g.add(wheel); g.position.set(x, 0.3, -1.8); cock.add(g); return g; });
@@ -228,7 +253,7 @@ function placeSky(t) {
   skyU.dawn.value = d; seaU.dawn.value = d; seaU.t.value = t;
   const fl = flashAmt(t); skyU.flash.value = fl * 0.6; seaU.flash.value = fl; flashL.intensity = fl * 3000;
   hemi.intensity = lerp(0.8, 1.6, d); moonL.intensity = lerp(2.2, 1.4, d); moonL.color.setHex(d > 0.5 ? 0xffe0c0 : 0xc9d6ff); rimL.intensity = d * 2.5;
-  cloudMat.color.setHex(d > 0.5 ? 0xffe6d8 : 0xaeb6d8); cloudMat.emissive.setHex(d > 0.5 ? 0x4a3030 : 0x1a1d38);
+  const cc = new THREE.Color(0x8994c2).lerp(new THREE.Color(0xffd9c4), d).lerp(new THREE.Color(0xe6ecff), fl * 0.8); cloudSpriteMats.forEach((m) => m.color.copy(cc));
   moon.material.opacity = 1 - d; moonCore.visible = d < 0.6;
   sea.position.y = -60 + altDrop * 0.9;
   clouds.forEach((c) => { const u = c.userData; let x = ((u.x0 - t * 26 * u.sp) % 600 + 600) % 600 - 300; c.position.set(x, u.y0 + altDrop, u.z0); });
@@ -255,14 +280,14 @@ function placeSky(t) {
   // walls
   const show = st(T.window - 0.3, T.window + 0.3, t) * (1 - st(T.now - 0.2, T.now, t)) + st(T.window2 - 0.3, T.window2 + 0.1, t) * (1 - st(T.then - 0.1, T.then + 0.2, t));
   const gap = windowGap(t);
-  walls.forEach((w, i) => { w.position.set((i ? 1 : -1) * gap, 0, 0); w.visible = show > 0.01; });
+  walls.forEach((w) => { w.visible = false; });
   wallMat.opacity = 0.18 * cl(show);
   // dust (thin air / rain)
   const rain = tb; const thin = st(T.thin - 0.3, T.thin + 0.3, t) * (1 - st(T.slow - 0.4, T.slow, t));
   dust.visible = rain > 0.01 || thin > 0.01;
   dustP.forEach((p, i) => { const x = ((p[0] - t * (rain > 0 ? 60 : 12)) % 60 + 60) % 60 - 30; const y = p[1] + altDrop * 0 ; const s = rain > 0 ? 1 : 0.6; m4.compose(V3(x, y, p[2]), q.identity(), V3(rain > 0 ? 8 * s : s, s * 0.4, s * 0.4)); dust.setMatrixAt(i, m4); });
   dust.instanceMatrix.needsUpdate = true; dust.material.opacity = 0.5 * Math.max(rain, thin);
-  bloom.strength = 0.55 + fl * 0.6;
+  bloom.strength = 0.5 + fl * 0.6; bolts.forEach((b, i) => { b.visible = fl > 0.4 && (Math.floor(t * 4) % 3) === i; });
 }
 
 function placeLab(t) {
@@ -309,11 +334,63 @@ function drawScreens(t) {
   const pitch = -0.9 * dive(t) + 0.4 * st(T.pilots2, T.ground + 0.6, t); const roll = 0.55;
   screens.forEach((s, i) => {
     const g = s.c.getContext('2d'); g.fillStyle = '#050708'; g.fillRect(0, 0, 256, 256);
-    if (i === 1) { g.save(); g.translate(128, 128); g.rotate(-roll); const off = pitch * 160; g.fillStyle = '#2b6fd6'; g.fillRect(-200, -400 + off, 400, 400); g.fillStyle = '#8a5a2b'; g.fillRect(-200, off, 400, 400); g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.moveTo(-200, off); g.lineTo(200, off); g.stroke(); g.restore(); g.strokeStyle = '#ffd23f'; g.lineWidth = 6; g.beginPath(); g.moveTo(70, 128); g.lineTo(110, 128); g.lineTo(128, 145); g.lineTo(146, 128); g.lineTo(186, 128); g.stroke(); }
+    if (i === 1) { drawPFD(g, t); } else if (false) { g.save(); g.translate(128, 128); g.rotate(-roll); const off = pitch * 160; g.fillStyle = '#2b6fd6'; g.fillRect(-200, -400 + off, 400, 400); g.fillStyle = '#8a5a2b'; g.fillRect(-200, off, 400, 400); g.strokeStyle = '#fff'; g.lineWidth = 3; g.beginPath(); g.moveTo(-200, off); g.lineTo(200, off); g.stroke(); g.restore(); g.strokeStyle = '#ffd23f'; g.lineWidth = 6; g.beginPath(); g.moveTo(70, 128); g.lineTo(110, 128); g.lineTo(128, 145); g.lineTo(146, 128); g.lineTo(186, 128); g.stroke(); }
     else if (i === 2) { const alt = altitude(t); g.fillStyle = '#0d1a10'; g.fillRect(40, 20, 176, 216); g.fillStyle = '#4ef0a0'; g.font = 'bold 44px monospace'; g.textAlign = 'center'; g.fillText(String(Math.round(alt / 10) * 10), 128, 140); g.strokeStyle = '#4ef0a0'; for (let k = -3; k <= 3; k++) { const y = 128 + k * 30 + ((alt / 3) % 30); g.beginPath(); g.moveTo(50, y); g.lineTo(70, y); g.stroke(); } }
     else { const on = Math.floor(t * 4) % 2; g.fillStyle = on ? '#ff2020' : '#401010'; g.fillRect(30, 90, 196, 76); g.fillStyle = '#ffffff'; g.font = 'bold 40px sans-serif'; g.textAlign = 'center'; g.fillText(i === 0 ? '⚠' : '!!', 128, 145); }
     s.tx.needsUpdate = true;
   });
+}
+function band(t) {
+  const c = eio(st(T.coffin - 0.3, T.coffin + 0.9, t)), k = eio(st(T.shrinks - 0.3, T.shrinks + 0.6, t)), ice = eio(st(T.ice, T.steal + 0.5, t));
+  const rare = st(T.rare - 0.1, T.rare + 0.4, t);
+  let vmo = lerp(lerp(300, 276, c), 262, k), vs = lerp(lerp(lerp(195, 222, c), 232, ice), 240, k);
+  vmo = lerp(vmo, 300, rare); vs = lerp(vs, 195, rare); return { vmo, vs };
+}
+function speed(t) {
+  let v = 250 + Math.sin(t * 0.7) * 2;
+  v = lerp(v, 236, st(T.slow - 0.2, T.lifting + 0.3, t) * (1 - st(T.fast - 0.2, T.fast + 0.2, t)));
+  v = lerp(v, 272, st(T.fast - 0.2, T.fast + 0.4, t) * (1 - st(T.pilots - 0.2, T.pilots + 0.3, t)));
+  v += turbAmt(t) * Math.sin(t * 9) * 6;
+  v = lerp(v, 234, st(T.jolt, T.stalls + 0.3, t));
+  v = lerp(v, 318, st(T.nose, T.pilots2, t) * (1 - st(T.rare - 0.1, T.rare + 0.3, t)));
+  return v;
+}
+function drawPFD(g, t) {
+  const S = 768; g.fillStyle = '#000'; g.fillRect(0, 0, S, S);
+  const pitch = jet.rotation.z, roll = jet.rotation.x;
+  // attitude
+  g.save(); g.beginPath(); g.rect(170, 110, 428, 470); g.clip(); g.translate(384, 345); g.rotate(roll);
+  const off = pitch * 520; g.fillStyle = '#2f6fe0'; g.fillRect(-600, -1200 + off, 1200, 1200); g.fillStyle = '#7a4e25'; g.fillRect(-600, off, 1200, 1200);
+  g.strokeStyle = '#fff'; g.lineWidth = 4; g.beginPath(); g.moveTo(-600, off); g.lineTo(600, off); g.stroke();
+  g.lineWidth = 3; g.font = '22px monospace'; g.fillStyle = '#fff'; g.textAlign = 'center';
+  for (let k = -6; k <= 6; k++) { if (!k) continue; const y = off - k * 5 * Math.PI / 180 * 520; const w = k % 2 ? 40 : 90; g.beginPath(); g.moveTo(-w, y); g.lineTo(w, y); g.stroke(); if (!(k % 2)) { g.fillText(String(Math.abs(k * 5)), -w - 26, y + 8); g.fillText(String(Math.abs(k * 5)), w + 26, y + 8); } }
+  g.restore();
+  g.strokeStyle = '#ffd23f'; g.lineWidth = 9; g.beginPath(); g.moveTo(250, 345); g.lineTo(340, 345); g.lineTo(384, 380); g.lineTo(428, 345); g.lineTo(518, 345); g.stroke();
+  // speed tape
+  const v = speed(t), b = band(t), px = 4.2;
+  g.fillStyle = '#3a3d44'; g.fillRect(20, 110, 130, 470);
+  g.save(); g.beginPath(); g.rect(20, 110, 130, 470); g.clip();
+  const yv = (val) => 345 - (val - v) * px;
+  for (let y0 = yv(b.vmo); y0 > 110; y0 -= 24) { g.fillStyle = Math.floor((yv(b.vmo) - y0) / 24) % 2 ? '#000' : '#e02020'; g.fillRect(122, y0 - 24, 22, 24); }
+  g.fillStyle = '#e02020'; g.fillRect(122, yv(b.vmo), 22, -600);
+  for (let y0 = yv(b.vs); y0 < 580; y0 += 24) { g.fillStyle = Math.floor((y0 - yv(b.vs)) / 24) % 2 ? '#000' : '#e02020'; g.fillRect(122, y0, 22, 24); }
+  g.fillStyle = '#e8a020'; g.fillRect(122, yv(b.vs + 10), 22, yv(b.vs) - yv(b.vs + 10));
+  g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.lineWidth = 3; g.font = '26px monospace'; g.textAlign = 'right';
+  for (let k = Math.floor((v - 60) / 10) * 10; k < v + 60; k += 10) { const y = yv(k); g.beginPath(); g.moveTo(104, y); g.lineTo(120, y); g.stroke(); if (k % 20 === 0) g.fillText(String(k), 98, y + 9); }
+  g.restore();
+  const danger = v > b.vmo - 2 || v < b.vs + 2;
+  g.fillStyle = '#000'; g.strokeStyle = danger ? '#ff3030' : '#fff'; g.lineWidth = 4; g.beginPath(); g.moveTo(14, 320); g.lineTo(118, 320); g.lineTo(140, 345); g.lineTo(118, 370); g.lineTo(14, 370); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = danger ? '#ff3030' : '#4ef0a0'; g.font = 'bold 36px monospace'; g.textAlign = 'right'; g.fillText(String(Math.round(v)), 110, 358);
+  // altitude tape
+  const alt = altitude(t); g.fillStyle = '#3a3d44'; g.fillRect(618, 110, 130, 470);
+  g.save(); g.beginPath(); g.rect(618, 110, 130, 470); g.clip(); g.strokeStyle = '#fff'; g.fillStyle = '#fff'; g.font = '24px monospace'; g.textAlign = 'left';
+  for (let k = Math.floor((alt - 600) / 100) * 100; k < alt + 600; k += 100) { const y = 345 - (k - alt) * 0.4; g.beginPath(); g.moveTo(618, y); g.lineTo(634, y); g.stroke(); if (k % 200 === 0) g.fillText(String(k), 640, y + 8); }
+  g.restore();
+  g.fillStyle = '#000'; g.strokeStyle = '#fff'; g.lineWidth = 4; g.fillRect(612, 320, 150, 50); g.strokeRect(612, 320, 150, 50); g.fillStyle = '#4ef0a0'; g.font = 'bold 32px monospace'; g.textAlign = 'center'; g.fillText(String(Math.round(alt / 20) * 20), 687, 357);
+  // vertical speed + heading strip
+  g.fillStyle = '#1b1d22'; g.fillRect(170, 600, 428, 140); g.strokeStyle = '#fff'; g.lineWidth = 3; g.font = '24px monospace'; g.fillStyle = '#fff'; g.textAlign = 'center';
+  const hdg = 120 + Math.sin(t * 0.2) * 3 + dive(t) * 40; for (let k = -40; k <= 40; k += 10) { const h = Math.round(hdg / 10) * 10 + k; const x = 384 + (h - hdg) * 5; g.beginPath(); g.moveTo(x, 610); g.lineTo(x, 630); g.stroke(); if (h % 30 === 0) g.fillText(String(((h % 360) + 360) % 360).padStart(3, '0'), x, 660); }
+  if (st(T.stalls - 0.1, T.rare, t) > 0 && t < T.rare && Math.floor(t * 4) % 2) { g.fillStyle = '#ff2020'; g.font = 'bold 44px monospace'; g.fillText(t < T.nose ? 'STALL' : 'OVERSPEED', 384, 720); }
 }
 function altitude(t) { const fall = t > T.nose - 0.2 && t < T.rare ? (t - (T.nose - 0.2)) : 0; return Math.max(9000, 35000 - fall * fall * 250 - fall * 800); }
 function placeCockpit(t) {
@@ -325,7 +402,7 @@ function placeCockpit(t) {
   yokes.forEach((y, i) => { y.position.z = -1.8 + pull * 0.45 + Math.sin(t * 9 + i) * 0.03 * pull; y.rotation.z = Math.sin(t * 3 + i) * 0.15 * pull; });
   pilots.forEach((p, i) => { p.rotation.x = -0.12 * pull; p.position.y = Math.sin(t * 11 + i) * 0.03; });
   cock.rotation.z = 0.12 * Math.sin(t * 2.2) * (warn ? 1 : 0); cock.rotation.x = 0.04 * Math.sin(t * 13) * (warn ? 1 : 0);
-  if (t > T.pilots2 - 0.3 && t < T.rare + 0.1) { drawOutside(t); drawScreens(t); }
+  drawOutside(t); drawScreens(t);
 }
 
 // ---------------------------------------------------------------- camera shots
@@ -345,17 +422,18 @@ function buildShots() {
     [T.no - 0.05, T.engine + 0.6, (u) => ({ p: V3(lerp(-1.5, -2.5, u), 1.8, lerp(5.5, 5.0, u)), g: V3(-4.6, 0.6, 1.7), f: 40 })],
     [T.engine + 0.6, T.up - 0.05, (u) => ({ p: V3(lerp(14, 10, u), lerp(-2, -1, u), lerp(-16, -12, u)), g: V3(0, 0, 0), f: 40 })],
     // up here: wide side, thin air + speed walls
-    [T.up - 0.05, T.slow - 0.05, (u) => ({ p: V3(lerp(0, 2, u), lerp(10, 6, u), lerp(52, 44, u)), g: V3(0, 0, 0), f: 40 })],
+    [T.up - 0.05, T.window - 0.2, (u) => ({ p: V3(lerp(-30, -22, u), lerp(-3, -1, u), lerp(34, 26, u)), g: V3(2, 0, 0), f: 38 })],
+    [T.window - 0.2, T.slow - 0.05, (u) => ({ p: CP.clone().add(V3(-0.8, lerp(1.5, 1.3, u), lerp(-0.1, -0.4, u))), g: CP.clone().add(V3(-0.8, 0.85, -2.59)), f: 58 })],
     // LAB: too slow / too fast
     [T.slow - 0.05, T.pilots - 0.05, (u) => ({ p: LAB.clone().add(V3(lerp(5, 2, u), lerp(2.5, 1.5, u), lerp(27, 24, u))), g: LAB.clone().add(V3(0.5, 0.6, 0)), f: 42 })],
     // coffin corner: walls closing, dramatic low wide
-    [T.pilots - 0.05, T.now - 0.05, (u) => ({ p: V3(lerp(-6, -3, u), lerp(-12, -8, u), lerp(40, 34, u)), g: V3(0, 1, 0), f: 38 })],
+    [T.pilots - 0.05, T.now - 0.05, (u) => ({ p: CP.clone().add(V3(lerp(-0.6, -0.8, u), 1.3, lerp(-0.2, -0.5, u))), g: CP.clone().add(V3(-0.8, 0.85, -2.59)), f: 56 })],
     // ice on the wing (close)
     [T.now - 0.05, T.sand + 0.2, (u) => ({ p: jetPt(lerp(3.5, 2.8, u), lerp(1.4, 1.0, u), lerp(-3.5, -4.5, u)), g: jetPt(0.5, -0.5, lerp(-5, -6, u)), f: 40 })],
     // LAB with ice: lift stolen
     [T.sand + 0.2, T.window2 - 0.05, (u) => ({ p: LAB.clone().add(V3(lerp(7, 4, u), lerp(3, 2, u), lerp(24, 21, u))), g: LAB.clone().add(V3(1.5, 0.6, 0)), f: 40 })],
     // the window shrinks
-    [T.window2 - 0.05, T.then - 0.05, (u) => ({ p: V3(0, lerp(4, 2, u), lerp(40, 30, u)), g: V3(0, 0, 0), f: 38 })],
+    [T.window2 - 0.05, T.then - 0.05, (u) => ({ p: CP.clone().add(V3(-0.85, lerp(1.35, 1.25, u), lerp(-0.3, -0.55, u))), g: CP.clone().add(V3(-0.8, 0.85, -2.59)), f: 54 })],
     // turbulence + jolt + stall
     [T.then - 0.05, T.nose - 0.05, (u) => ({ p: V3(lerp(20, 15, u), lerp(5, 3.5, u), lerp(28, 22, u)), g: V3(-1, 0, 0), f: 44 })],
     // dive: chase camera
@@ -420,45 +498,13 @@ function check(x, y, s) { if (s <= 0) return; ctx.save(); ctx.translate(x, y); c
 function shareIcons(t, s) { if (s <= 0) return; ctx.save(); ctx.translate(W / 2, 450); ctx.scale(s, s); for (const [dx, kind] of [[-110, 'plus'], [110, 'send']]) { ctx.save(); ctx.translate(dx, 0); ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.strokeStyle = '#111'; ctx.lineWidth = 6; ctx.beginPath(); ctx.arc(0, 0, 80, 0, 7); ctx.fill(); ctx.stroke(); ctx.strokeStyle = '#ff3b4a'; ctx.fillStyle = '#ff3b4a'; ctx.lineWidth = 16; ctx.lineCap = 'round'; if (kind === 'plus') { ctx.beginPath(); ctx.moveTo(-34, 0); ctx.lineTo(34, 0); ctx.moveTo(0, -34); ctx.lineTo(0, 34); ctx.stroke(); } else { ctx.beginPath(); ctx.moveTo(-40, 0); ctx.lineTo(40, -32); ctx.lineTo(14, 40); ctx.lineTo(4, 10); ctx.closePath(); ctx.fill(); } ctx.restore(); } ctx.restore(); }
 
 function overlay(t) {
-  // cinematic vignette + letterbox feel
-  const vg = ctx.createRadialGradient(W / 2, H * 0.48, H * 0.22, W / 2, H * 0.5, H * 0.78); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.6)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-  // HOOK: altitude tag, radar, blip vanish
-  if (t > 0.3 && t < T.seventy - 0.1) altTag(W / 2, 300, 35000, '#ffffff', pop(t - 0.4, 0.35));
-  if (t > T.seventy - 0.1 && t < T.no - 0.05) radar(t, pop(t - T.seventy + 0.1, 0.2));
-  if (t > T.gone - 0.05 && t < T.gone + 0.12) { ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - (t - T.gone + 0.05) / 0.17)})`; ctx.fillRect(0, 0, W, H); }
-  // no explosion / no engine failure: crossed icons
-  if (t > T.no - 0.05 && t < T.up - 0.05) { for (const [t0, x] of [[T.no, W / 2 - 170], [T.engine - 0.3, W / 2 + 170]]) { const s = pop(t - t0, 0.2); if (s > 0) { ctx.save(); ctx.translate(x, 380); ctx.scale(s, s); ctx.fillStyle = 'rgba(8,10,24,0.85)'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, 95, 0, 7); ctx.fill(); ctx.stroke(); if (x < W / 2) { ctx.fillStyle = '#ff9f1c'; ctx.beginPath(); for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2, r = i % 2 ? 30 : 62; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.fill(); } else { ctx.strokeStyle = '#cfd6e0'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(0, 0, 50, 0, 7); ctx.stroke(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + t * 6; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * 46, Math.sin(a) * 46); ctx.stroke(); } } ctx.strokeStyle = '#ff3b4a'; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(-65, -65); ctx.lineTo(65, 65); ctx.stroke(); ctx.restore(); } } }
-  if (t > T.what - 0.1 && t < T.up - 0.05) txt('?', W / 2, 640, 220 * pop(t - T.what + 0.1), '#ffd23f', '#000', 0.1);
-  // speed window: slow / fast gauges over the walls
-  if (t > T.window - 0.1 && t < T.slow - 0.05) { gauge(W / 2 - 250, 1400, pop(t - T.window) * 0.8, 0.12, [[0, 0.25, '#4cc9f0']]); gauge(W / 2 + 250, 1400, pop(t - T.window - 0.15) * 0.8, 0.9, [[0.75, 1, '#ff3b4a']]); }
-  // LAB: lift label arrows
-  if (t > T.slow - 0.05 && t < T.pilots - 0.05) { gauge(W / 2, 1450, 0.7, t < T.fast - 0.1 ? lerp(0.5, 0.12, st(T.slow, T.lifting, t)) : lerp(0.3, 0.95, st(T.fast - 0.1, T.fast + 0.5, t)), [[0, 0.25, '#4cc9f0'], [0.75, 1, '#ff3b4a']]); }
-  // coffin corner chart
-  if (t > T.coffin - 0.5 && t < T.now - 0.05) cornerChart(t, pop(t - T.coffin + 0.5, 0.3));
-  // ice icon / lift stolen
-  if (t > T.ice - 0.1 && t < T.window2 - 0.05) { iconIce(W - 170, 300, pop(t - T.ice + 0.1) * 0.9); }
-  if (t > T.steal - 0.2 && t < T.window2 - 0.05) { const l = lerp(260, 120, eo(st(T.steal, T.steal + 0.8, t))); arrowUp(170, 560, l, l < 200 ? '#ff5a5a' : '#4ef0a0'); }
-  // window shrinks: speed gauge zones squeeze
-  if (t > T.window2 - 0.05 && t < T.then - 0.05) { const k = eo(st(T.shrinks - 0.3, T.shrinks + 0.6, t)); gauge(W / 2, 1420, 0.85, 0.55, [[0, lerp(0.25, 0.45, k), '#4cc9f0'], [lerp(0.75, 0.62, k), 1, '#ff3b4a']]); }
-  // turbulence: lightning bolts + stall warning
-  const fl = flashAmt(t); if (fl > 0.5) bolt2D(150 + (Math.floor(t * 4) % 3) * 360, 80, t);
-  if (t > T.stalls - 0.1 && t < T.pilots2 - 0.05) { const on = Math.floor(t * 5) % 2; if (on) { ctx.save(); ctx.fillStyle = 'rgba(255,30,30,0.22)'; ctx.fillRect(0, 0, W, 30); ctx.fillRect(0, H - 30, W, 30); ctx.fillRect(0, 0, 30, H); ctx.fillRect(W - 30, 0, 30, H); ctx.restore(); } }
-  // dive: altitude unwinding
-  if (t > T.nose - 0.05 && t < T.rare - 0.05) { altTag(W / 2, 300, altitude(t), '#ff5a5a', 1); const vs = Math.min(1, st(T.nose, T.thousands + 1, t)); gauge(W / 2, 1420, 0.85, lerp(0.5, 0.97, vs), [[0.8, 1, '#ff3b4a']]); }
-  // rare: safety checks
-  if (t > T.warnings - 0.2 && t < T.but - 0.05) { [0, 1, 2].forEach((i) => check(W / 2 - 220 + i * 220, 420, pop(t - (T.warnings - 0.2 + i * 0.35)) * 0.9)); }
-  // line up: three icons align
-  if (t > T.but - 0.05 && t < T.follow - 0.05) {
-    const a = st(T.but, T.but + 0.6, t), al = eio(st(T.line - 0.3, T.line + 0.4, t));
-    const ys = [lerp(330, 430, al), lerp(520, 430, al), lerp(380, 430, al)];
-    iconIce(W / 2 - 230, ys[0], pop(t - T.but) * 0.8); iconTurb(W / 2, ys[1], pop(t - T.but - 0.2) * 0.8, t); iconWindow(W / 2 + 230, ys[2], pop(t - T.but - 0.4) * 0.8);
-    if (al > 0.95) { ctx.save(); ctx.strokeStyle = '#ff3b4a'; ctx.lineWidth = 8; ctx.shadowColor = '#ff3b4a'; ctx.shadowBlur = 30; ctx.beginPath(); ctx.roundRect(W / 2 - 340, 330, 680, 200, 30); ctx.stroke(); ctx.restore(); }
-  }
-  if (t > T.follow - 0.1) shareIcons(t, pop(t - T.follow + 0.1, 0.3));
-  const fade = Math.max(1 - st(0, 0.3, t), st(DUR - 0.6, DUR, t)); if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${fade})`; ctx.fillRect(0, 0, W, H); }
-  for (const tc of [T.no, T.slow, T.nose, T.rare]) { const u = (t - tc) / 0.14; if (u >= 0 && u < 1) { ctx.fillStyle = `rgba(255,255,255,${0.3 * (1 - u)})`; ctx.fillRect(0, 0, W, H); } }
+  const vg = ctx.createRadialGradient(W / 2, H * 0.48, H * 0.22, W / 2, H * 0.5, H * 0.78); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+  const fl = flashAmt(t); if (fl > 0) { ctx.fillStyle = `rgba(220,230,255,${0.25 * fl})`; ctx.fillRect(0, 0, W, H); }
+  const black = (t > T.gone + 0.15 && t < T.no - 0.05) ? 1 - st(T.no - 0.35, T.no - 0.05, t) : 0;
+  const fade = Math.max(1 - st(0, 0.3, t), st(DUR - 0.6, DUR, t), black);
+  if (fade > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, fade)})`; ctx.fillRect(0, 0, W, H); }
+  for (const tc of [T.no, T.slow, T.nose, T.rare]) { const u = (t - tc) / 0.12; if (u >= 0 && u < 1) { ctx.fillStyle = `rgba(255,255,255,${0.18 * (1 - u)})`; ctx.fillRect(0, 0, W, H); } }
 }
-
 window.renderFrame = (t, q = 0.92) => {
   placeSky(t);
   // hook 3: jet drops into the cloud deck
