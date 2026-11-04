@@ -91,11 +91,13 @@ const neonM = new THREE.MeshStandardMaterial({ color: 0xff3fb4, emissive: 0xff3f
 { const ring = mesh(new THREE.TorusGeometry(0.55, 0.04, 10, 48), neonM, false, false); ring.position.set(-2.4, 4.1, 0.05); club.add(ring); const pts = []; for (let i = 0; i <= 40; i++) pts.push(V3(-3.6 + i * 0.06, 4.1 + Math.sin(i * 0.5) * 0.18, 0.06)); const wave = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 80, 0.03, 6), new THREE.MeshStandardMaterial({ color: 0x3ff0ff, emissive: 0x3ff0ff, emissiveIntensity: 3 }), false, false); club.add(wave); }
 const neonL = new THREE.PointLight(0xff3fb4, 18, 9, 1.6); neonL.position.set(-2.4, 3.6, 1.2); scene.add(neonL);
 const doorGlow = new THREE.PointLight(0xb04cff, 8, 6, 1.6); doorGlow.position.set(-2.4, 1.6, 0.2); scene.add(doorGlow);
+const entryFill = new THREE.PointLight(0xffc9a0, 4, 6, 1.5); entryFill.position.set(-0.4, 2.3, 1.9); scene.add(entryFill);
+const wallWash = new THREE.SpotLight(0xd06aff, 9, 8, 0.7, 0.6, 1.4); wallWash.position.set(-0.9, 0.3, 2.2); wallWash.target.position.set(-0.9, 1.6, 0); scene.add(wallWash); scene.add(wallWash.target);
 // street lamps
 for (const x of [-9, 6]) { const p = mesh(new THREE.CylinderGeometry(0.07, 0.1, 5, 10), M(0x2a2c30, { metalness: 0.7, roughness: 0.4 })); p.position.set(x, 2.5, 5.6); scene.add(p); const hd = box(0.5, 0.15, 0.3, M(0x2a2c30)); hd.position.set(x, 5.0, 5.3); scene.add(hd); const s = glow(0xffb66a, 1.6); s.position.set(x, 4.9, 5.3); scene.add(s); const l = new THREE.PointLight(0xffa860, 25, 16, 1.4); l.position.set(x, 4.8, 5.2); scene.add(l); }
 // fire exit door (right side wall) with push bar and alarm box
 const fireDoor = new THREE.Group(); fireDoor.position.set(7.2, 0, -7.4); scene.add(fireDoor);
-{ const d = box(0.07, 2.25, 1.18, M(0x4a5560, { metalness: 0.6, roughness: 0.45 })); d.position.set(0, 1.12, 0.59); fireDoor.add(d); const bar = box(0.08, 0.07, 1.0, M(0xc8102e, { metalness: 0.4, roughness: 0.4 })); bar.position.set(-0.08, 1.05, 0.6); fireDoor.add(bar); }
+{ const d = box(0.07, 2.25, 1.18, M(0x4a5560, { metalness: 0.6, roughness: 0.45 })); d.position.set(0, 1.12, -0.59); fireDoor.add(d); const bar = box(0.08, 0.07, 1.0, M(0xc8102e, { metalness: 0.4, roughness: 0.4 })); bar.position.set(-0.08, 1.05, -0.6); fireDoor.add(bar); }
 const exitSign = box(0.05, 0.25, 0.6, new THREE.MeshStandardMaterial({ color: 0x0a8f3a, emissive: 0x18e070, emissiveIntensity: 2 })); exitSign.position.set(6.8, 2.6, -8.0); scene.add(exitSign);
 const alarmBox = box(0.1, 0.3, 0.3, M(0xd9c400, { roughness: 0.5 })); alarmBox.position.set(6.78, 2.0, -6.9); scene.add(alarmBox);
 const alarmLamp = mesh(new THREE.SphereGeometry(0.07, 14, 10), new THREE.MeshStandardMaterial({ color: 0x400000, emissive: 0xff2020, emissiveIntensity: 0 }), false, false); alarmLamp.position.set(6.7, 2.25, -6.9); scene.add(alarmLamp);
@@ -188,7 +190,7 @@ teen.userData.P.arms[1].hand.add(idCard); idCard.position.set(0, -0.1, 0.03);
 const scanner = new THREE.Group(); scanner.position.set(-0.9, 0, 0.8); scene.add(scanner);
 const scanScreenC = document.createElement('canvas'); scanScreenC.width = 256; scanScreenC.height = 320; const scanTex = new THREE.CanvasTexture(scanScreenC); scanTex.colorSpace = THREE.SRGBColorSpace;
 function drawScan(state, photo) { const c = scanScreenC.getContext('2d'); c.fillStyle = '#0b1020'; c.fillRect(0, 0, 256, 320); if (photo) { c.fillStyle = '#c9d6e2'; c.fillRect(48, 30, 160, 190); c.fillStyle = photo; c.beginPath(); c.arc(128, 105, 46, 0, 7); c.fill(); c.fillStyle = '#2a4a7a'; c.beginPath(); c.ellipse(128, 220, 70, 50, 0, Math.PI, 0); c.fill(); } const col = state === 'ok' ? '#2ee88a' : state === 'no' ? '#ff3344' : '#5a6a8a'; c.fillStyle = col; c.shadowColor = col; c.shadowBlur = 20; c.beginPath(); c.arc(128, 270, 30, 0, 7); c.fill(); c.shadowBlur = 0; c.strokeStyle = '#0b1020'; c.lineWidth = 9; c.lineCap = 'round'; c.beginPath(); if (state === 'ok') { c.moveTo(113, 270); c.lineTo(124, 282); c.lineTo(145, 258); } else if (state === 'no') { c.moveTo(116, 258); c.lineTo(140, 282); c.moveTo(140, 258); c.lineTo(116, 282); } c.stroke(); scanTex.needsUpdate = true; }
-{ const post = box(0.12, 1.1, 0.12, M(0x1a1a1e, { metalness: 0.5 })); post.position.y = 0.55; scanner.add(post); const headB = box(0.38, 0.12, 0.3, M(0x202026, { metalness: 0.5, roughness: 0.3 }), 0.02); headB.position.y = 1.15; scanner.add(headB); const scr = mesh(new THREE.PlaneGeometry(0.2, 0.25), new THREE.MeshBasicMaterial({ map: scanTex, color: 0x9a9a9a })); scr.position.set(0, 1.36, -0.05); scr.rotation.x = -0.3; scanner.add(scr); const bez = box(0.23, 0.28, 0.02, M(0x111114)); bez.position.set(0, 1.36, -0.062); bez.rotation.x = -0.3; scanner.add(bez); const glassS = box(0.28, 0.01, 0.2, new THREE.MeshPhysicalMaterial({ color: 0x223344, roughness: 0.05, transparent: true, opacity: 0.6 })); glassS.position.set(0, 1.215, 0.0); scanner.add(glassS); }
+{ const post = box(0.12, 1.1, 0.12, M(0x1a1a1e, { metalness: 0.5 })); post.position.y = 0.55; scanner.add(post); const headB = box(0.38, 0.12, 0.3, M(0x202026, { metalness: 0.5, roughness: 0.3 }), 0.02); headB.position.y = 1.15; scanner.add(headB); const scr = mesh(new THREE.PlaneGeometry(0.2, 0.25), new THREE.MeshBasicMaterial({ map: scanTex, color: 0x9a9a9a })); scr.position.set(0, 1.36, -0.05); scr.rotation.x = -0.3; scanner.add(scr); const bez = box(0.23, 0.28, 0.02, M(0x111114)); bez.position.set(0, 1.36, -0.062); bez.rotation.x = -0.3; scanner.add(bez); const glassS = box(0.3, 0.012, 0.22, new THREE.MeshPhysicalMaterial({ color: 0x223344, roughness: 0.05, emissive: 0x6a2ad0, emissiveIntensity: 0 })); glassS.position.set(0, 1.215, 0.0); scanner.add(glassS); scanner.userData.glass = glassS; }
 const uvGlow = new THREE.PointLight(0x8a3cff, 0, 1.2, 2); uvGlow.position.set(-0.9, 1.3, 0.8); scene.add(uvGlow);
 const uvSprite = glow(0x9a4cff, 0.5, 0); uvSprite.position.set(-0.9, 1.24, 0.8); scene.add(uvSprite);
 // network: more clubs across the city linked by light
@@ -229,7 +231,7 @@ function placeClub(t) {
   tiles.forEach(({ tl, i, j }) => { const hue = ((i + j) * 0.09 + t * 0.12) % 1; tl.material.emissive.setHSL(hue, 0.85, 0.5); tl.material.emissiveIntensity = on * lit * (0.6 + 0.9 * (((i + j + Math.floor(t * 4.1)) % 3) === 0 ? 1 : 0.25)); });
   heads.forEach((h, k) => { const a = Math.sin(t * 0.9 + k) * 0.7, b = Math.cos(t * 0.7 + k * 1.3) * 0.5; h.rotation.set(a, 0, b); beams[k].rotation.set(a, 0, b); beams[k].material.opacity = 0.11 * on * lit; beams[k].material.color.setHSL((k * 0.17 + t * 0.05) % 1, 0.9, 0.6); });
   spots.forEach((s, k) => { s.intensity = 40 * on * lit * (0.6 + beat * 0.6); s.color.setHSL((k * 0.25 + t * 0.07) % 1, 0.9, 0.55); s.target.position.set(Math.sin(t * 0.8 + k) * 3, 0, -7 + Math.cos(t * 0.6 + k) * 2.5); });
-  floorWash.intensity = 12 * on * lit; work.forEach((w) => { w.intensity = (t > T.instantly - 0.15 && t < T.fight - 0.3) ? 90 : 0; });
+  floorWash.intensity = 12 * on * lit; work.forEach((w) => { w.intensity = (t > T.instantly - 0.15 && t < T.fight - 0.3) ? 22 : 0; });
   haze.forEach((h, i) => { h.material.opacity = 0.12 * on * lit; h.position.x += Math.sin(t * 0.3 + i) * 0.002; });
   // crowd: grows by midnight, dances, freezes when the music cuts, rushes during the fire
   const fill = st(T.lights, T.packed + 0.5, t); const fireRush = st(T.fire, T.everyone + 0.8, t) * (1 - st(T.bouncer - 0.1, T.bouncer, t));
@@ -251,7 +253,7 @@ function placeClub(t) {
   roof.visible = !aerial(t); ceiling.visible = !aerial(t);
   // fire exit & alarm
   const fe = eo(st(T.pushes - 0.1, T.pushes + 0.5, t)) * (1 - st(T.alarm + 0.4, T.alarm + 1.2, t)) + eo(st(T.music2 - 0.6, T.music2 - 0.2, t)) * (1 - st(T.instantly + 0.8, T.instantly + 1.5, t));
-  fireDoor.rotation.y = -1.3 * cl(fe);
+  fireDoor.rotation.y = 1.3 * cl(fe);
   const al = t > T.alarm - 0.2 && t < T.fight - 0.3 ? (Math.floor(t * 5) % 2) : 0; alarmLamp.material.emissiveIntensity = al * 4; alarmLight.intensity = al * 25;
   ropeG.visible = t > T.rope - 0.2; ropeG.scale.setScalar(Math.max(0.001, eob(st(T.rope - 0.2, T.rope + 0.3, t)))); cloak.visible = t > T.cloak - 0.3; barG.visible = t > T.bar - 0.3 || t < T.rope - 1;
   netLines.forEach((l, i) => { l.material.opacity = 0.9 * st(T.network - 0.2 + i * 0.15, T.network + 0.3 + i * 0.15, t) * (1 - st(T.step - 0.3, T.step, t)); });
@@ -272,13 +274,13 @@ function placeActors(t) {
   // teen with the borrowed ID strolls past, later scanned
   teen.visible = t > T.teen - 0.3 && t < T.saves; let tp = V3(-2.4, 0, 3.4), tr = Math.PI, tP = { aR: [0.6, 0.05, 0], eR: 1.2, hx: 0.05 };
   if (t > T.teen - 0.3 && t < T.scanner - 0.1) { const u = st(T.teen - 0.3, T.scanner - 0.3, t); tp.set(lerp(-1.0, -2.4, u), 0, lerp(3.2, -0.6, u)); tr = Math.PI + 0.1; tP = { ...walkPose(t), aR: [0.6, 0.05, 0], eR: 1.25 }; }
-  if (t >= T.scanner - 0.1 && t < T.saves) { tp.set(-0.95, 0, 1.6); tr = Math.PI; tP = { aR: [0.55, -0.05, 0], eR: 1.1, wR: -0.4, hx: 0.2 }; }
+  if (t >= T.scanner - 0.1 && t < T.saves) { tp.set(-1.45, 0, 1.45); tr = Math.PI + 0.5; tP = { aR: [0.55, -0.05, 0], eR: 1.1, wR: -0.4, hx: 0.2 }; }
   teen.position.copy(tp); teen.rotation.y = tr; pose(teen, tP, t);
   // ID on the scanner glass under UV
   const onScan = t > T.uv - 0.3 && t < T.saves; idCard.visible = t > T.teen - 0.4 && t < T.saves;
   if (onScan) { if (idCard.parent !== scene) scene.add(idCard); idCard.position.set(-0.9, 1.225, 0.8); idCard.rotation.set(-Math.PI / 2, 0, 0); } else if (idCard.parent !== teen.userData.P.arms[1].hand) { teen.userData.P.arms[1].hand.add(idCard); idCard.position.set(0, -0.1, 0.03); idCard.rotation.set(0, 0, 0); }
   const real = t < T.fake - 0.1; idMat.map = real ? idReal : idFake; idMat.emissiveMap = real ? idRealUV : idFake; idMat.emissive.setHex(onScan && real ? 0xffffff : 0x000000); idMat.emissiveIntensity = onScan && real ? 1.2 : 0; idMat.needsUpdate = true;
-  const uvOn = onScan ? 1 : 0; uvGlow.intensity = 6 * uvOn; uvSprite.material.opacity = 0.8 * uvOn;
+  const uvOn = onScan ? 1 : 0; scanner.userData.glass.material.emissiveIntensity = uvOn * 1.2; uvGlow.intensity = 6 * uvOn; uvSprite.material.opacity = 0.8 * uvOn;
   if (t < T.scanner) drawScan('idle', null); else if (t < T.fake - 0.1) drawScan(t > T.real ? 'ok' : 'idle', t > T.real ? '#c08060' : null); else if (t < T.banned) drawScan('no', '#a07050'); else drawScan('no', '#5a3a28');
   // smoker + rejected mates slip back in; hand stamp; fire exit
   smoker.visible = t > T.step - 0.3 && t < T.hand; mate1.visible = mate2.visible = t > T.step - 0.3;
@@ -316,12 +318,12 @@ function buildShots() {
     [T.bouncer - 0.1, T.number - 0.1, (u) => ({ p: V3(lerp(1.6, 0.9, eio(u)), lerp(1.8, 1.6, u), lerp(5.2, 4.0, eio(u))), g: V3(-1.6, 1.4, 0.9), f: 42 })],
     [T.number - 0.1, T.teen - 0.05, (u) => { const c = clicker.getWorldPosition(new THREE.Vector3()); return { p: c.clone().add(V3(0.22, 0.05, 0.3)), g: c, f: 30 }; }],
     [T.teen - 0.05, T.scanner - 0.1, (u) => ({ p: V3(lerp(2.6, 1.8, u), lerp(2.2, 1.8, u), lerp(6.6, 5.4, u)), g: V3(-1.8, 1.2, 1.0), f: 42 })],
-    [T.scanner - 0.1, T.saves - 0.05, (u) => ({ p: V3(lerp(-0.45, -0.6, u), lerp(1.75, 1.6, u), lerp(1.35, 1.2, u)), g: V3(-0.9, 1.25, 0.8), f: 38 })],
-    [T.saves - 0.05, T.banned - 0.1, (u) => ({ p: V3(-0.55, lerp(1.85, 1.75, u), lerp(1.75, 1.6, u)), g: V3(-0.9, 1.34, 0.75), f: 32 })],
+    [T.scanner - 0.1, T.saves - 0.05, (u) => ({ p: V3(lerp(1.2, 0.7, eio(u)), lerp(2.1, 1.9, u), lerp(3.6, 2.9, eio(u))), g: V3(-1.0, 1.25, 0.9), f: 38 })],
+    [T.saves - 0.05, T.banned - 0.1, (u) => ({ p: V3(lerp(0.4, 0.2, u), lerp(1.75, 1.7, u), lerp(2.4, 2.1, u)), g: V3(-0.95, 1.3, 0.8), f: 36 })],
     [T.banned - 0.1, T.step - 0.05, (u) => ({ p: V3(lerp(0, 10, eio(u)), lerp(30, 42, eio(u)), lerp(34, 40, eio(u))), g: V3(0, 0, -6), f: 46 })],
     [T.step - 0.05, T.hand - 0.3, (u) => ({ p: V3(lerp(0.8, 0.2, u), lerp(1.9, 1.7, u), lerp(6.8, 6.0, u)), g: V3(-2.8, 1.2, 1.2), f: 42 })],
     [T.hand - 0.3, T.then - 0.05, (u) => { const h = mate1.userData.P.arms[1].hand.getWorldPosition(new THREE.Vector3()); return { p: h.clone().add(V3(0.4, 0.25, 0.5)), g: h, f: 34 }; }],
-    [T.then - 0.05, T.music2 - 0.6, (u) => ({ p: V3(lerp(11.5, 10.8, u), lerp(1.8, 1.6, u), lerp(-1.5, -2.5, u)), g: V3(7.6, 1.2, -6.8), f: 42 })],
+    [T.then - 0.05, T.music2 - 0.6, (u) => ({ p: V3(lerp(11.8, 11.0, u), lerp(2.0, 1.7, u), lerp(-2.0, -3.0, u)), g: V3(7.3, 1.3, -7.8), f: 44 })],
     [T.music2 - 0.6, T.fight - 0.3, (u) => ({ p: V3(lerp(-4.5, -3.5, u), lerp(3.4, 3.0, u), lerp(-0.6, -0.9, u)), g: V3(1, 1.2, -7), f: 50 })],
     [T.fight - 0.3, T.poly - 0.3, (u) => ({ p: V3(lerp(1.8, 1.4, u), 1.6, lerp(0.8, 0.4, u)), g: V3(-0.15, 1.45, -2.1), f: 42 })],
     [T.poly - 0.3, T.cams - 0.4, (u) => ({ p: V3(-4.0, 1.55, lerp(-3.6, -3.8, u)), g: V3(-4.9, 1.3, -4.5), f: 34 })],
