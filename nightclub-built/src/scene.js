@@ -9,7 +9,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const W = 1080, H = 1920;
 const SEG = window.SEGMENTS || [];
-const DUR = window.DUR || 65.8;
+const DUR = window.DUR || 65.5;
 const cl = (x) => Math.min(1, Math.max(0, x));
 const st = (a, b, t) => cl((t - a) / (b - a));
 const lerp = (a, b, u) => a + (b - a) * u;
@@ -24,7 +24,7 @@ const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 const WORDS = SEG.flatMap((s) => s.words.map((w) => ({ w: w.w.toLowerCase().replace(/[^a-z0-9']/g, ''), s: w.s })));
 function Wt(word, after = 0) { const ws = word.split('|'); const x = WORDS.find((q) => ws.includes(q.w) && q.s >= after); return x ? x.s : after + 1.0; }
 const B = {};
-B.lights = Wt('lights'); B.crank = Wt('crank'); B.club1 = Wt('nightclub'); B.midnight = Wt('midnight'); B.packed = Wt('packed'); B.fire = Wt('fire'); B.everyone = Wt('everyone');
+B.lights = Wt('music'); B.crank = Wt('crank'); B.club1 = Wt('nightclub'); B.midnight = Wt('midnight'); B.packed = Wt('packed'); B.fire = Wt('fire'); B.everyone = Wt('everyone');
 B.bouncer = Wt('bouncer'); B.clicker = Wt('clicker'); B.number = Wt('number'); B.nobody = Wt('nobody');
 B.teen = Wt('teenagers'); B.id1 = Wt('id', B.teen);
 B.scanner = Wt('scanner'); B.uv = Wt('uv'); B.real = Wt('real'); B.hidden = Wt('hidden'); B.fake = Wt('fake');
@@ -256,7 +256,7 @@ function placeClub(t) {
   ropeG.visible = t > T.rope - 0.2; ropeG.scale.setScalar(Math.max(0.001, eob(st(T.rope - 0.2, T.rope + 0.3, t)))); cloak.visible = t > T.cloak - 0.3; barG.visible = t > T.bar - 0.3 || t < T.rope - 1;
   netLines.forEach((l, i) => { l.material.opacity = 0.9 * st(T.network - 0.2 + i * 0.15, T.network + 0.3 + i * 0.15, t) * (1 - st(T.step - 0.3, T.step, t)); });
 }
-function aerial(t) { return t < T.lights + 0.6 || (t > T.fire - 0.15 && t < T.bouncer - 0.1) || t > T.built - 0.3; }
+function aerial(t) { return  (t > T.fire - 0.15 && t < T.bouncer - 0.1) || t > T.built - 0.3; }
 function placeActors(t) {
   // bouncer at the door
   bouncer.position.set(-1.6, 0, 0.9); bouncer.rotation.y = 0.35; let bp = { aR: [0.55, 0.15, 0], eR: 1.25, aL: [0.1, 0.25, 0], eL: 0.3, hy: -0.2 };
@@ -310,8 +310,8 @@ function placeActors(t) {
 let SHOTS = [];
 function buildShots() {
   SHOTS = [
-    [-1, T.lights + 0.6, (u) => ({ p: V3(lerp(18, 13, eio(u)), lerp(26, 20, eio(u)), lerp(20, 14, eio(u))), g: V3(0, 0, -6), f: 46 })],
-    [T.lights + 0.6, T.fire - 0.15, (u) => ({ p: V3(lerp(-4.5, 4.5, eio(u)), lerp(3.6, 3.0, u), lerp(-0.8, -0.6, u)), g: V3(0, 1.4, -7), f: 52 })],
+    [-1, T.packed - 0.1, (u, t) => { const k = eio(st(T.lights - 0.1, T.packed - 0.1, t)); return { p: V3(lerp(0.4, 0.2, k), lerp(0.35, 1.0, k), lerp(-0.6, -5.4, k)), g: V3(0, lerp(2.6, 1.6, k), -11), f: lerp(78, 64, k) }; }],
+    [T.packed - 0.1, T.fire - 0.15, (u) => ({ p: V3(lerp(-5.0, 5.0, eio(u)), lerp(4.2, 3.4, u), lerp(-0.9, -0.7, u)), g: V3(0, 1.3, -7), f: 66 })],
     [T.fire - 0.15, T.bouncer - 0.1, (u) => ({ p: V3(lerp(10, 9, u), 18, lerp(8, 6, u)), g: V3(0, 0, -5.5), f: 46 })],
     [T.bouncer - 0.1, T.number - 0.1, (u) => ({ p: V3(lerp(1.6, 0.9, eio(u)), lerp(1.8, 1.6, u), lerp(5.2, 4.0, eio(u))), g: V3(-1.6, 1.4, 0.9), f: 42 })],
     [T.number - 0.1, T.teen - 0.05, (u) => { const c = clicker.getWorldPosition(new THREE.Vector3()); return { p: c.clone().add(V3(0.22, 0.05, 0.3)), g: c, f: 30 }; }],
