@@ -1,0 +1,5 @@
+node_modules/
+output/stills/
+output/render.log
+output/video_noaudio.mp4
+audio/final_mix.wav
