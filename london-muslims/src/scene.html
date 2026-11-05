@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 
-const W = 1920, H = 1080;
+const QP = new URLSearchParams(location.search); const W = +(QP.get('w') || 1920), H = +(QP.get('h') || 1080); const ASP = W / H;
 const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(1); renderer.setSize(W, H);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
@@ -393,7 +393,7 @@ const lineNodes = lineData.map(([y, v], i) => {
   const post = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, linePts[i].y), new THREE.MeshBasicMaterial({ color: '#ffb3a8', transparent: true, opacity: .5 })); post.position.set(linePts[i].x, linePts[i].y / 2, 0); chartC.add(post);
   return { s, lbl, yl, post };
 });
-const tower2 = clockTower(); tower2.scale.setScalar(.36); tower2.position.set(40, 0, -26); chartC.add(tower2);
+const tower2 = clockTower(); tower2.scale.setScalar(.36); tower2.position.set(ASP < 1.5 ? 52 : 40, 0, ASP < 1.5 ? -60 : -26); chartC.add(tower2);
 const qMark = makeLabel('?', { size: 300, color: '#ffffff', glow: '#ff3b2f', weight: 900 }); qMark.setH(9); qMark.position.set(-22, 15, -4); chartC.add(qMark);
 const ukFlag = (() => { // waving union flag-like cloth (plane w/ texture)
   const c = document.createElement('canvas'); c.width = 600; c.height = 300; const g = c.getContext('2d');
@@ -409,7 +409,7 @@ const ukFlag = (() => { // waving union flag-like cloth (plane w/ texture)
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(.15, .15, 22), new THREE.MeshStandardMaterial({ color: '#ddd', metalness: 1, roughness: .2 })); pole.position.y = -8.5; g2.add(pole);
   g2.userData.cloth = m; return g2;
 })();
-ukFlag.position.set(-34, 19.5, -22); chartC.add(ukFlag);
+ukFlag.position.set(ASP < 1.5 ? -27 : -34, 19.5, -22); chartC.add(ukFlag);
 
 // ---------- HUD (fade / vignette / letterbox) ----------
 const hud = new THREE.Scene(); const hudCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -421,7 +421,7 @@ const bars = []; for (const s of [-1, 1]) { const b = new THREE.Mesh(new THREE.P
 
 // ---------- cameras ----------
 const cam = new THREE.PerspectiveCamera(42, W / H, .1, 2000);
-function look(pos, tgt, fov = 42) { cam.position.copy(pos); cam.lookAt(tgt); cam.fov = fov; cam.updateProjectionMatrix(); }
+function look(pos, tgt, fov = 42) { cam.position.copy(pos); cam.lookAt(tgt); if (ASP < 16 / 9) fov = 2 * Math.atan(Math.tan(fov * Math.PI / 360) * (16 / 9) / ASP * .9) * 180 / Math.PI; cam.fov = fov; cam.updateProjectionMatrix(); }
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const vlerp = (a, b, t) => a.clone().lerp(b, t);
 
@@ -498,7 +498,7 @@ window.renderAt = function (t) {
   } else if (name === 'pakbars') {
     world = studio; chartB.visible = true;
     const e = ease(u);
-    look(vlerp(V(20, 8, 40), V(-14, 14, 42), e), V(0, 10, 0), 40);
+    look(vlerp(V(20, 8, 40), V(-14, 14, 42), e), V(ASP < 1.5 ? -5 : 0, 10, 0), 40);
     pkBars.forEach((bb, i) => {
       const g = easeOut(ramp(lt, .2 + i * .6, 1.4 + i * .6)); const h = bb.userData.v / 290549 * 13 * g;
       bb.userData.m.scale.y = Math.max(.001, h); bb.userData.m.material.map.repeat.set(1, 1);
@@ -529,7 +529,7 @@ window.renderAt = function (t) {
     look(vlerp(V(-30, 10, 34), V(8, 24, 48), e), vlerp(V(-6, 8, 0), V(4, 10, 0), e), 40);
     const lu = ease(ramp(lt, .3, 3.2)); setLine(lu);
     lineNodes.forEach((n, i) => { const at = i / 2 * .96; const k = clamp((lu - at + .03) * 7); n.s.scale.setScalar(back(k) + .001); n.lbl.material.opacity = k; n.lbl.setH(2.1 * back(k) + .01); n.post.visible = k > .5; });
-    qMark.material.opacity = ramp(lt, 3.6, 4.2); qMark.setH(9 * back(ramp(lt, 3.6, 4.3)) + .01); qMark.position.y = 13 + Math.sin(lt * 2) * .5;
+    qMark.material.opacity = ramp(lt, 3.6, 4.2); qMark.setH(9 * back(ramp(lt, 3.6, 4.3)) + .01); qMark.position.y = (ASP < 1.5 ? 23 : 13) + Math.sin(lt * 2) * .5; if (ASP < 1.5) qMark.position.x = -4;
     const cl = ukFlag.userData.cloth, base = cl.geometry.userData.base, pa = cl.geometry.attributes.position.array;
     for (let i = 0; i < pa.length; i += 3) { const x = base[i]; pa[i + 2] = Math.sin(x * .8 - t * 5) * .45 * ((x + 5) / 10); pa[i + 1] = base[i + 1] + Math.sin(x * .6 - t * 4) * .12 * ((x + 5) / 10); }
     cl.geometry.attributes.position.needsUpdate = true; cl.geometry.computeVertexNormals();
