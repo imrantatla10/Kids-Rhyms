@@ -2,7 +2,7 @@
 
 1920×1080, 30 fps, 39.6 s. The scenes are 3D, built in three.js and rendered headless with Playwright. The voiceover is the user's own file (`audio/voiceover.mp3`), with a synthesized music bed and SFX mixed underneath.
 
-**Video:** [`output/London_Muslims_3D_horizontal.mp4`](output/London_Muslims_3D_horizontal.mp4)
+**Video:** [`output/London_Muslims_3D_horizontal.mp4`](output/London_Muslims_3D_horizontal.mp4) (1920×1080) · [`output/London_Muslims_3D_square_1080x1080.mp4`](output/London_Muslims_3D_square_1080x1080.mp4) (1080×1080, render with `--size 1080x1080`)
 
 | Time | Scene |
 |---|---|
