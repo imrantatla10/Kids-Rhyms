@@ -23,6 +23,7 @@ with wave.open(os.path.join(ROOT, "audio/vo.wav")) as w:
 N = int(DUR * SR)
 voice = np.zeros((2, N)); n = min(N, vo.shape[1]); voice[:, :n] = vo[:2, :n] if vo.shape[0] > 1 else np.vstack([vo[0, :n]] * 2)
 sfx = np.zeros((2, N))
+wat = np.zeros((2, N))   # water sounds: muted wherever the voice speaks
 
 
 def fft_filter(x, lo=None, hi=None):
@@ -37,12 +38,13 @@ def env(n, decay, attack=0.002):
     return np.minimum(1, t / max(attack, 1e-4)) * np.exp(-t / decay)
 
 
-def add(sig, t, pan=0.0, gain=1.0):
+def add(sig, t, pan=0.0, gain=1.0, bus=None):
+    bus = sfx if bus is None else bus
     i = int(round(t * SR))
     if i >= N: return
     if i < 0: sig = sig[-i:]; i = 0
     m = min(len(sig), N - i); ang = (np.clip(pan, -1, 1) + 1) * np.pi / 4
-    sfx[0, i:i + m] += sig[:m] * gain * np.cos(ang); sfx[1, i:i + m] += sig[:m] * gain * np.sin(ang)
+    bus[0, i:i + m] += sig[:m] * gain * np.cos(ang); bus[1, i:i + m] += sig[:m] * gain * np.sin(ang)
 
 
 noise = lambda n: rng.standard_normal(n)
@@ -131,28 +133,28 @@ surf = fft_filter(noise(N), 60, 1800) * (0.5 + 0.5 * np.sin(2 * np.pi * t / 7.0)
 surf += fft_filter(noise(N), 2000, 7000) * (0.3 + 0.7 * np.sin(2 * np.pi * t / 7.0 + 0.6) ** 6) * 0.05
 xray = (t >= LS[10]) & (t < end(10))
 surf[xray] *= 0.25
-sfx[0] += surf; sfx[1] += fft_filter(noise(N), 60, 1800) * (0.5 + 0.5 * np.cos(2 * np.pi * t / 8.0) ** 2) * 0.22 * np.where(xray, 0.25, 1)
+wat[0] += surf; wat[1] += fft_filter(noise(N), 60, 1800) * (0.5 + 0.5 * np.cos(2 * np.pi * t / 8.0) ** 2) * 0.22 * np.where(xray, 0.25, 1)
 for g in np.arange(2.0, DUR, 9.5):
     add(gull(), g + rng.uniform(0, 2), pan=rng.uniform(-0.7, 0.7), gain=0.6)
 
 # flowing water while the open tower stands in the flood (lines 7-9, 11-12)
 for i, lvl in [(7, 0.9), (8, 0.7), (9, 0.8), (11, 0.9), (12, 0.8), (20, 0.4), (21, 0.35)]:
-    add(shaped(end(i) - LS[i] + 0.4, 100, 3500, 0.3, 0.4) * lvl * 0.5, LS[i] - 0.1)
+    add(shaped(end(i) - LS[i] + 0.4, 100, 3500, 0.3, 0.4) * lvl * 0.5, LS[i] - 0.1, bus=wat)
 
 # ---------------------------------------------------------------- events per line
 dig_rate = 6 * 1.3 / (2 * np.pi)
 for k in range(int((end(0) - 0.2) * dig_rate)): add(scrape(), 0.15 + k / dig_rate, pan=0.2, gain=0.6)
-add(wave_roar(end(1) - LS[1] + 1.5, at(1, 0.42) - LS[1], 0.7), LS[1], gain=0.9)
+add(wave_roar(end(1) - LS[1] + 1.5, at(1, 0.42) - LS[1], 0.7), LS[1], gain=0.9, bus=wat)
 add(whoosh(1.4, True, 200), at(2, 0.1), gain=0.6)
 for k in range(int((at(3, 0.6) - LS[3]) * dig_rate * 1.15)): add(scrape(), LS[3] + 0.1 + k / (dig_rate * 1.15), pan=0.3, gain=0.55)
 add(steps(end(3) - at(3, 0.6), 3.5, hard=False), at(3, 0.6), gain=0.5)
-add(wave_roar(end(4) - LS[4] + 2.0, at(4, 0.45) - LS[4], 1.2), LS[4], gain=1.0)
+add(wave_roar(end(4) - LS[4] + 2.0, at(4, 0.45) - LS[4], 1.2), LS[4], gain=1.0, bus=wat)
 add(steps(at(4, 0.6) - at(4, 0.15), 4.5, hard=False), at(4, 0.15), gain=0.45)
 add(shaped(end(5) - LS[5], 30, 400, 0.3, 0.4) * 0.8, LS[5], gain=0.8)   # concrete pour rumble
 for k in range(6): add(thud(60, 0.5), LS[5] + 0.3 + k * (end(5) - LS[5]) * 0.13, gain=0.5)
-add(wave_roar(end(6) - LS[6] + 1.5, at(6, 0.35) - LS[6], 1.2), LS[6], gain=1.0)
+add(wave_roar(end(6) - LS[6] + 1.5, at(6, 0.35) - LS[6], 1.2), LS[6], gain=1.0, bus=wat)
 add(crack(), at(6, 0.36), gain=1.0); add(crack(), at(6, 0.6), gain=0.9)
-for k in range(10): add(whoosh(0.4, True, 500) * 0.3 + thud(50, 0.4) * 0.2, at(9, 0.1 + k * 0.08), pan=rng.uniform(-0.5, 0.5), gain=0.5)  # swirl
+for k in range(10): add(whoosh(0.4, True, 500) * 0.3 + thud(50, 0.4) * 0.2, at(9, 0.1 + k * 0.08), pan=rng.uniform(-0.5, 0.5), gain=0.5, bus=wat)  # swirl
 for k in range(int((at(10, 0.75) - at(10, 0.1)) / 0.38)):
     add(thud(55, 0.7, ring=[230, 410, 690]), at(10, 0.1) + k * 0.38, gain=0.9)                        # pile driver
 for d in [(0.0, -26, 2.2), (0.25, -30, 2.05), (0.45, -36, 2.2), (0.6, -40, 2.05), (0.75, -44, 2.05)]:
@@ -167,13 +169,13 @@ siren_d = end(13) - LS[13]; sn = int(siren_d * SR); st = np.arange(sn) / SR
 add(np.sin(2 * np.pi * np.cumsum(650 + 250 * np.sin(2 * np.pi * st / 2.4)) / SR) * 0.12 * np.minimum(1, st / 0.5) * np.minimum(1, (siren_d - st) / 0.5), LS[13], gain=0.7)
 add(steps(end(13) - LS[13], 7), LS[13], gain=0.35)
 add(steps(end(14) - at(14, 0.45), 8), at(14, 0.45), gain=0.5)
-add(shaped(end(15) - LS[15] + 0.5, 25, 250, 0.8, 0.5), LS[15], gain=0.9)                 # distant monster wave
+add(shaped(end(15) - LS[15] + 0.5, 25, 250, 0.8, 0.5), LS[15], gain=0.9, bus=wat)                 # distant monster wave
 add(whoosh(1.6, True, 150), at(16, 0.1), gain=0.6); add(chime([660, 880, 1320], spacing=0.08), at(16, 0.27), gain=0.7)
 drain = end(17) - LS[17]; dn = int(drain * SR); dt_ = np.arange(dn) / SR
-add(whoosh(drain * 0.5, False, 250) * 0.8, LS[17], gain=0.6)
+add(whoosh(drain * 0.5, False, 250) * 0.8, LS[17], gain=0.6, bus=wat)
 for k in range(6): add(np.sin(2 * np.pi * 1000 * np.arange(int(0.12 * SR)) / SR) * 0.2, at(17, 0.64) + k * 0.22, gain=0.5)
 add(steps(end(17) - at(17, 0.5), 8), at(17, 0.5), gain=0.45)
-add(wave_roar(end(19) - LS[19] + 2.0, at(19, 0.4) - LS[19], 1.3), LS[19], gain=1.0)
+add(wave_roar(end(19) - LS[19] + 2.0, at(19, 0.4) - LS[19], 1.3), LS[19], gain=1.0, bus=wat)
 rd = end(20) - LS[20]; rn = int(rd * SR); rt = np.arange(rn) / SR
 add(fft_filter(noise(rn), 600, 3200) * (0.5 + 0.5 * np.sin(2 * np.pi * 3.1 * rt) ** 2) * 0.08, LS[20], pan=0.4)    # radio
 for k in range(14): add(fft_filter(noise(int(0.02 * SR)), 2000, 8000) * 0.3, at(20, 0.5) + k * 0.09, pan=0.5, gain=0.5)  # crab clicks
@@ -188,7 +190,11 @@ for i, f in [(0, 0.62), (1, 0.45), (2, 0.55), (3, 0.45), (4, 0.6), (5, 0.5), (6,
 venv = np.abs(voice).max(axis=0)
 k = int(0.05 * SR); venv = np.convolve(venv, np.ones(k) / k, mode="same")
 duck = 1 - 0.55 * np.clip(venv / 0.15, 0, 1)
-mix = voice * 1.0 + sfx * duck * 0.55
+# water: fully off while the voice speaks (held through the short gaps between words), quieter elsewhere
+k2 = int(0.45 * SR)
+talk = np.convolve((venv > 0.01).astype(float), np.ones(k2) / k2, mode="same") > 0.02
+gate = np.convolve((~talk).astype(float), np.ones(int(0.12 * SR)) / int(0.12 * SR), mode="same")
+mix = voice * 1.0 + sfx * duck * 0.55 + wat * gate * 0.3
 mix = np.tanh(mix * 1.05) / np.tanh(1.05)
 mix /= np.max(np.abs(mix)) / 0.9
 fade = int(0.6 * SR); mix[:, -fade:] *= np.linspace(1, 0, fade)
