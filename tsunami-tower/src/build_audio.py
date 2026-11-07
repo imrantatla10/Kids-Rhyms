@@ -177,7 +177,7 @@ for k in range(6): add(np.sin(2 * np.pi * 1000 * np.arange(int(0.12 * SR)) / SR)
 add(steps(end(17) - at(17, 0.5), 8), at(17, 0.5), gain=0.45)
 add(wave_roar(end(19) - LS[19] + 2.0, at(19, 0.4) - LS[19], 1.3), LS[19], gain=1.0, bus=wat)
 rd = end(20) - LS[20]; rn = int(rd * SR); rt = np.arange(rn) / SR
-add(fft_filter(noise(rn), 600, 3200) * (0.5 + 0.5 * np.sin(2 * np.pi * 3.1 * rt) ** 2) * 0.08, LS[20], pan=0.4)    # radio
+# (radio static removed: no background hiss)
 for k in range(14): add(fft_filter(noise(int(0.02 * SR)), 2000, 8000) * 0.3, at(20, 0.5) + k * 0.09, pan=0.5, gain=0.5)  # crab clicks
 add(chime([523, 659, 784, 1047], dur=2.0, spacing=0.12), LS[21] + 0.05, gain=0.8)
 # transitions and graphic pops
@@ -194,7 +194,7 @@ duck = 1 - 0.55 * np.clip(venv / 0.15, 0, 1)
 k2 = int(0.45 * SR)
 talk = np.convolve((venv > 0.01).astype(float), np.ones(k2) / k2, mode="same") > 0.02
 gate = np.convolve((~talk).astype(float), np.ones(int(0.12 * SR)) / int(0.12 * SR), mode="same")
-mix = voice * 1.0 + sfx * duck * 0.55 + wat * gate * 0.3
+mix = voice * 1.0 + sfx * duck * 0.55   # water bus (wat) intentionally left out: no background water hiss
 mix = np.tanh(mix * 1.05) / np.tanh(1.05)
 mix /= np.max(np.abs(mix)) / 0.9
 fade = int(0.6 * SR); mix[:, -fade:] *= np.linspace(1, 0, fade)
