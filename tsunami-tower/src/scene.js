@@ -235,7 +235,7 @@ function updateSpray(t) {
       const x = (hash(i * 13 + 5) - 0.5) * 200;
       const hgt = w.crest - WS.sea;
       _p.set(x + (hash(i) - 0.5) * 2, w.crest + ph * hgt * 0.25 - ph * ph * hgt * 0.35, w.zf + 0.5 + ph * 2.5);
-      const s = (0.1 + 0.35 * hash(i * 3)) * (1 - ph) * Math.min(1, hgt / 3) * smooth(150, 110, Math.abs(x));
+      const s = (0.05 + 0.14 * hash(i * 3)) * (1 - ph) * Math.min(1, hgt / 3) * smooth(150, 110, Math.abs(x));
       _s.setScalar(s); _m.compose(_p, _q, _s); spray.setMatrixAt(k, _m);
     }
   }
@@ -508,13 +508,29 @@ const CAMS = [
 // extra wide angles: [order, split]. 'W1' = wide first then the main shot, 'W2' = main shot then wide.
 const WIDES = { 0: ['W1', 0.4], 1: ['W1', 0.36], 3: ['W2', 0.58], 4: ['W1', 0.38], 5: ['W2', 0.55], 6: ['W1', 0.3], 7: ['W1', 0.33],
   9: ['W2', 0.62], 11: ['W1', 0.32], 12: ['W2', 0.5], 13: ['W1', 0.42], 16: ['W2', 0.55], 17: ['W1', 0.5], 18: ['W2', 0.55], 20: ['W1', 0.28] };
+// subject-focused wide angles: [look target, distance, height above target, angle (0 = land side, PI = sea side)]
+const WFOCUS = {
+  0: [V(0, -0.8, 0), 13, 6.5, 0.65],      // the hole on the beach
+  1: [V(0, -0.5, -7), 20, 7, -0.55],       // wave rolling toward the hole
+  3: [V(0, 2, 0), 16, 6, 1.0],             // the sand hill
+  4: [V(0, 1.8, -3), 16, 6.5, -1.0],       // wave hitting the hill
+  5: [V(0, 4, 0), 18, 7, 0.35],            // the concrete tower going up
+  6: [V(0, 3.5, -3), 22, 8, 1.75],         // side view: wave slams the solid wall
+  7: [V(0, 2.2, 0), 16, 4, -0.45],         // water through the open ground floor
+  9: [V(0, -0.8, 0), 12, 7.5, 0.85],       // scour holes round the columns
+  11: [V(0, 1.4, -7), 20, 8, 2.35],        // boats and cars coming in from the sea
+  12: [V(0, 1.6, -1), 15, 5.5, -2.55],     // round columns, junk sliding past
+  13: [V(0, 3, 3), 16, 5.5, 0.2],          // family at the ladder
+  16: [V(0, 8, 0), 26, 7, -0.7],           // roof rising above the wave line
+  17: [V(0, -1.5, -18), 30, 15, 0.45],     // the emptied beach and pulled-back sea
+  18: [V(0, 2.4, 0), 15, 1.2, 0.5],        // eye level through the empty ground floor
+  20: [V(0, 13.4, 0.6), 9, 4.5, 0.9],      // the rooftop: blanket, radio, crab
+};
 function wideCam(i, q) {
-  // high, wide establishing angles that change side every time
-  const base = [0.5, -0.7, 1.0, -1.1, 0.25, -0.35, 1.25, -0.9, 0.75, -0.2, 1.1, -0.6, 0.4, -1.2, 0.9, -0.45, 0.15, -1.0, 0.6, -0.8, 1.2, -0.3][i];
-  const a = base + 0.18 * q, r = i >= 15 ? 38 : 30, h = i >= 15 ? 18 : 13;
-  const lookY = i >= 16 ? 6 : i === 20 ? 12 : 2.5;
-  camera.position.set(r * Math.sin(a), h + 2 * q, r * Math.cos(a));
-  camera.fov = 50; camera.lookAt(0, lookY, -3); camera.updateProjectionMatrix();
+  const [look, dist, hgt, ang] = WFOCUS[i];
+  const a = ang + 0.12 * q, d = dist * (1 - 0.1 * q);                    // slow orbit + push-in on the subject
+  camera.position.set(look.x + d * Math.sin(a), look.y + hgt * (1 - 0.06 * q), look.z + d * Math.cos(a));
+  camera.fov = 48; camera.lookAt(look); camera.updateProjectionMatrix();
 }
 function setCamera(t) {
   const i = lineAt(t);

@@ -40,20 +40,14 @@ Code-built three.js scene:
 - **Characters:** a worker (orange hoodie, hard hat) and a family.
 - **Structures:** the solid tower that cracks and splits, the open tsunami tower
   (columns, piles, spiral ramp, rising roof), a 3-story house, boats and cars.
-- **Camera:** moves in every scene, and most scenes cut between a close angle and a high wide angle.
+- **Camera:** moves in every scene, and most scenes cut between a close angle and a wide angle
+  aimed at what the line is about (`WFOCUS` in `src/scene.js`), with a slow push-in.
 - **Graphics:** callout tags, banners, a timer, big numbers, dimension lines and
   captions.
 
-## Sound effects (`src/build_audio.py`)
-- **Beach:** sea surf and gulls.
-- **Building:** shovel scrapes, the concrete pour, cracking, the pile driver.
-- **Water:** wave roars, rushing flood, the sea draining back.
-- **Crashes:** boat and car impacts.
-- **Warning and escape:** the clock, siren, footsteps and alarm beeps.
-- **Rooftop:** radio static and crab clicks.
-- **Edit:** whooshes on cuts, pops on graphics, chimes.
-
-The effects are ducked under the voice.
+## Audio
+The final mix is **voiceover only**. `src/build_audio.py` still contains the
+synthesised effects, but they are not mixed in.
 
 ## Rebuild
 ```bash

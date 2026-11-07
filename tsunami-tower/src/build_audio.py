@@ -194,7 +194,7 @@ duck = 1 - 0.55 * np.clip(venv / 0.15, 0, 1)
 k2 = int(0.45 * SR)
 talk = np.convolve((venv > 0.01).astype(float), np.ones(k2) / k2, mode="same") > 0.02
 gate = np.convolve((~talk).astype(float), np.ones(int(0.12 * SR)) / int(0.12 * SR), mode="same")
-mix = voice * 1.0 + sfx * duck * 0.55   # water bus (wat) intentionally left out: no background water hiss
+mix = voice * 1.0   # voiceover only: no sound effects, no transition whooshes (sfx/wat buses are not mixed in)
 mix = np.tanh(mix * 1.05) / np.tanh(1.05)
 mix /= np.max(np.abs(mix)) / 0.9
 fade = int(0.6 * SR); mix[:, -fade:] *= np.linspace(1, 0, fade)
