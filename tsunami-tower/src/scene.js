@@ -490,13 +490,13 @@ const CAMS = [
   [V(13, 6, 13), V(10.5, 9, 10.5), V(0, 3, 0), V(0, 4.5, 0), 52],                       // 5 concrete tower
   [V(13, 10, -15), V(11, 9, -12.5), V(0, 3.5, -2), V(0, 3.8, -2.5), 54],                // 6 cracks
   [V(9.5, 2.6, 9.5), V(6.5, 2.2, 6.5), V(0, 2.2, -1), V(0, 2.4, -2), 54],               // 7 open floor
-  ['orbit', 15, 6.5, 0.55, 1.35, V(0, 4.5, 0), 50],                                     // 8 this is a tsunami tower
+  ['orbit', 22, 9, 0.55, 1.45, V(0, 4.5, 0), 50],                                     // 8 this is a tsunami tower
   [V(8, 3.6, 7.5), V(6, 2.6, 5.6), V(0, -0.8, 0), V(0, -0.9, 0), 56],                   // 9 scour
   [V(16, 0.5, 0.01), V(19, -4, 0.01), V(0, -3, 0), V(0, -6.5, 0), 58],                  // 10 piles x-ray
   [V(9, 4.2, -10), V(7.5, 3.4, -7.5), V(0, 1.5, -2), V(0, 1.4, -1), 54],               // 11 boats & cars
   [V(7.5, 3.2, 7.5), V(5.5, 3, 5), V(0, 1.6, -2), V(0, 1.6, -3), 54],                   // 12 round columns
   [V(9, 4.5, 13), V(6.5, 6, 10), V(0, 3, 1), V(0, 5, 1), 52],                           // 13 minutes of warning
-  ['orbit', 17, 9, 0.75, 1.75, V(0, 3.5, 0), 52],                                      // 14 ramp
+  ['orbit', 24, 11, 0.75, 1.85, V(0, 3.5, 0), 52],                                      // 14 ramp
   [V(8, 7, 30), V(7, 7.5, 27), V(-5, 5.5, -12), V(-5, 6, -12), 60],                     // 15 3-story house
   [V(16, 8, 17), V(13, 11, 13), V(0, 7, 0), V(0, 9, 0), 54],                            // 16 roof +30%
   [V(15, 12, 16), V(18, 14, 21), V(-3, -1, -20), V(-3, -1.5, -24), 58],                 // 17 sea pulls back
@@ -505,8 +505,26 @@ const CAMS = [
   [V(3.4, 15.6, 4.6), V(2.6, 15, 3.6), V(0, 13.2, 0.4), V(0, 13.1, 0.5), 54],           // 20 blanket radio crab
   [V(9, 17, 11), V(22, 24, 30), V(0, 9, 0), V(0, 7, 0), 52],                            // 21 congratulations
 ];
+// extra wide angles: [order, split]. 'W1' = wide first then the main shot, 'W2' = main shot then wide.
+const WIDES = { 0: ['W1', 0.4], 1: ['W1', 0.36], 3: ['W2', 0.58], 4: ['W1', 0.38], 5: ['W2', 0.55], 6: ['W1', 0.3], 7: ['W1', 0.33],
+  9: ['W2', 0.62], 11: ['W1', 0.32], 12: ['W2', 0.5], 13: ['W1', 0.42], 16: ['W2', 0.55], 17: ['W1', 0.5], 18: ['W2', 0.55], 20: ['W1', 0.28] };
+function wideCam(i, q) {
+  // high, wide establishing angles that change side every time
+  const base = [0.5, -0.7, 1.0, -1.1, 0.25, -0.35, 1.25, -0.9, 0.75, -0.2, 1.1, -0.6, 0.4, -1.2, 0.9, -0.45, 0.15, -1.0, 0.6, -0.8, 1.2, -0.3][i];
+  const a = base + 0.18 * q, r = i >= 15 ? 38 : 30, h = i >= 15 ? 18 : 13;
+  const lookY = i >= 16 ? 6 : i === 20 ? 12 : 2.5;
+  camera.position.set(r * Math.sin(a), h + 2 * q, r * Math.cos(a));
+  camera.fov = 50; camera.lookAt(0, lookY, -3); camera.updateProjectionMatrix();
+}
 function setCamera(t) {
-  const i = lineAt(t), c = CAMS[i], p = easeIO(P(i, t));
+  const i = lineAt(t);
+  const wd = WIDES[i];
+  if (wd) {
+    const pr = P(i, t), [ord, sp] = wd;
+    if (ord === 'W1' && pr < sp) return wideCam(i, pr / sp);
+    if (ord === 'W2' && pr >= sp) return wideCam(i, (pr - sp) / (1 - sp));
+  }
+  const c = CAMS[i], p = easeIO(P(i, t));
   if (c[0] === 'orbit') {
     const [, r, h, a0, a1, look, fov] = c; const a = lerp(a0, a1, P(i, t));
     camera.position.set(r * Math.sin(a), h, r * Math.cos(a)); camera.fov = fov; camera.lookAt(look);
@@ -820,8 +838,9 @@ function overlay(t) {
   if (L === 21) { const a = smooth(0.08, 0.3, p); if (a > 0) { bigNumber('CONGRATULATIONS!', null, W / 2, H * 0.17, a, '#ffd21a', 104); cg.globalAlpha = a; txt('YOU BUILT A', W / 2, H * 0.17 + 110, 60, '#fff', '#000', 0.16); txt('TSUNAMI TOWER', W / 2, H * 0.17 + 190, 96, '#fff', '#0b2a4a', 0.16); cg.globalAlpha = 1; } }
   caption(t);
   // cut flash between lines
-  const since = t - LS[L];
-  if (L > 0 && since < 0.12) { cg.fillStyle = `rgba(255,255,255,${0.35 * (1 - since / 0.12)})`; cg.fillRect(0, 0, W, H); }
+  let since = t - LS[L];
+  const wd = WIDES[L]; if (wd) { const ct = lerp(LS[L], lineEnd(L), wd[1]); if (t >= ct) since = t - ct; }
+  if ((L > 0 || wd) && since < 0.12) { cg.fillStyle = `rgba(255,255,255,${0.3 * (1 - since / 0.12)})`; cg.fillRect(0, 0, W, H); }
 }
 
 function renderFrame(t) {

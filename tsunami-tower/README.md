@@ -1,16 +1,16 @@
 # How to Build a Tsunami Tower 🌊🏗️
 
-A vertical (9:16, 1080×1920, 30 fps) **72-second** 3D explainer in a "build it from
+A vertical (9:16, 1080×1920, 30 fps) **65-second** 3D explainer in a "build it from
 zero" style. Each failed idea leads to the next fix, until you have a real
 tsunami tower.
 
 **Video:** [`output/Tsunami_Tower_vertical.mp4`](output/Tsunami_Tower_vertical.mp4)
 
 ## Voiceover
-- **ElevenLabs**, voice *Dan - Energetic & Conversational* (`eleven_v4`), sped up
-  1.15× (pitch kept) to `audio/vo.wav`. Raw take: `audio/vo_raw.mp3`.
-- Word timestamps come from ElevenLabs Scribe (`audio/words_raw.json`), scaled to
-  the faster speed in `src/timing.json`. They drive the scene cuts and the
+- **ElevenLabs**, voice *Dan - Energetic & Conversational* (`eleven_v4`). The pauses
+  between sentences are tightened, then the take is sped up 1.2× (pitch kept), into `audio/vo.wav`. Raw take: `audio/vo_raw.mp3`.
+- Word timestamps come from ElevenLabs Scribe (`audio/words_raw.json`), mapped onto
+  that edit in `src/timing.json`. They drive the scene cuts and the
   word-by-word captions.
 
 ## Story beats (one scene per line)
@@ -37,7 +37,7 @@ Code-built three.js scene:
 - **Characters:** a worker (orange hoodie, hard hat) and a family.
 - **Structures:** the solid tower that cracks and splits, the open tsunami tower
   (columns, piles, spiral ramp, rising roof), a 3-story house, boats and cars.
-- **Camera:** moves in every scene.
+- **Camera:** moves in every scene, and most scenes cut between a close angle and a high wide angle.
 - **Graphics:** callout tags, banners, a timer, big numbers, dimension lines and
   captions.
 
