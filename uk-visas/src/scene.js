@@ -467,47 +467,68 @@ function stamp(str, sub, x, y, a, color) {
   cg.font = EN(70); const w = cg.measureText(str).width + 80; cg.strokeStyle = color; cg.lineWidth = 10; cg.strokeRect(-w / 2, -70, w, sub ? 175 : 140);
   text(str, 0, -2, 70, color, EN, '#ffffff', 0.06); if (sub) text(sub, 0, 70, 52, color, HI, '#ffffff', 0.06); cg.restore();
 }
+// ---- icon graphics (no words)
+function passport(x, y, sz, a, mark = null, markA = 0) {
+  if (a <= 0) return; cg.save(); cg.globalAlpha = a; const sc = 0.6 + 0.4 * backOut(a); cg.translate(x, y); cg.scale(sc, sc);
+  cg.shadowColor = 'rgba(0,0,0,0.55)'; cg.shadowBlur = 26;
+  cg.fillStyle = '#7a1630'; cg.beginPath(); cg.roundRect(-sz * 0.36, -sz / 2, sz * 0.72, sz, sz * 0.06); cg.fill(); cg.shadowBlur = 0;
+  cg.strokeStyle = '#e8c45a'; cg.lineWidth = sz * 0.025; cg.beginPath(); cg.arc(0, -sz * 0.06, sz * 0.17, 0, 6.3); cg.stroke();
+  cg.beginPath(); cg.ellipse(0, -sz * 0.06, sz * 0.07, sz * 0.17, 0, 0, 6.3); cg.moveTo(-sz * 0.17, -sz * 0.06); cg.lineTo(sz * 0.17, -sz * 0.06); cg.stroke();
+  cg.fillStyle = '#e8c45a'; cg.fillRect(-sz * 0.2, sz * 0.22, sz * 0.4, sz * 0.03); cg.fillRect(-sz * 0.14, sz * 0.3, sz * 0.28, sz * 0.025);
+  if (mark && markA > 0) {
+    cg.globalAlpha = a * Math.min(1, markA * 1.5); const ms = 1.6 - 0.6 * easeOut(markA); cg.save(); cg.translate(sz * 0.3, sz * 0.32); cg.scale(ms, ms);
+    cg.fillStyle = mark === 'x' ? '#e02424' : '#16a34a'; cg.beginPath(); cg.arc(0, 0, sz * 0.22, 0, 6.3); cg.fill();
+    cg.strokeStyle = '#fff'; cg.lineWidth = sz * 0.06; cg.lineCap = 'round'; cg.beginPath();
+    if (mark === 'x') { cg.moveTo(-sz * 0.09, -sz * 0.09); cg.lineTo(sz * 0.09, sz * 0.09); cg.moveTo(sz * 0.09, -sz * 0.09); cg.lineTo(-sz * 0.09, sz * 0.09); }
+    else { cg.moveTo(-sz * 0.1, 0); cg.lineTo(-sz * 0.02, sz * 0.08); cg.lineTo(sz * 0.11, -sz * 0.08); }
+    cg.stroke(); cg.restore();
+  }
+  cg.restore();
+}
+function question(x, y, sz, a, t) {
+  if (a <= 0) return; cg.save(); cg.globalAlpha = a; const sc = (0.6 + 0.4 * backOut(a)) * (1 + 0.05 * Math.sin(t * 5)); cg.translate(x, y); cg.scale(sc, sc);
+  cg.shadowColor = 'rgba(0,0,0,0.5)'; cg.shadowBlur = 24; cg.fillStyle = '#ffd21a'; cg.beginPath(); cg.arc(0, 0, sz / 2, 0, 6.3); cg.fill(); cg.shadowBlur = 0;
+  text('?', 0, sz * 0.04, sz * 0.75, '#111', EN, null); cg.restore();
+}
+function calendar(x, y, sz, a, num) {
+  if (a <= 0) return; cg.save(); cg.globalAlpha = a; const sc = 0.6 + 0.4 * backOut(a); cg.translate(x, y); cg.scale(sc, sc);
+  cg.shadowColor = 'rgba(0,0,0,0.55)'; cg.shadowBlur = 26; cg.fillStyle = '#ffffff'; cg.beginPath(); cg.roundRect(-sz / 2, -sz / 2, sz, sz, sz * 0.1); cg.fill(); cg.shadowBlur = 0;
+  cg.fillStyle = '#e02424'; cg.beginPath(); cg.roundRect(-sz / 2, -sz / 2, sz, sz * 0.26, [sz * 0.1, sz * 0.1, 0, 0]); cg.fill();
+  cg.fillStyle = '#333'; for (const sx of [-0.25, 0.25]) { cg.beginPath(); cg.roundRect(sx * sz - sz * 0.04, -sz * 0.6, sz * 0.08, sz * 0.2, sz * 0.04); cg.fill(); }
+  text(String(num), 0, sz * 0.14, sz * 0.52, '#111', EN, null); cg.restore();
+}
+function laborMeter(x, y, a, lvl) {
+  if (a <= 0) return; cg.save(); cg.globalAlpha = a;
+  // worker silhouette icon (hard hat)
+  cg.fillStyle = '#ffffff'; cg.beginPath(); cg.arc(x - 450, y - 8, 22, 0, 6.3); cg.fill(); cg.beginPath(); cg.roundRect(x - 482, y + 16, 64, 34, 14); cg.fill();
+  cg.fillStyle = '#ffd21a'; cg.beginPath(); cg.arc(x - 450, y - 18, 24, Math.PI, 0); cg.fill(); cg.fillRect(x - 480, y - 20, 60, 6);
+  cg.fillStyle = 'rgba(0,0,0,0.6)'; cg.beginPath(); cg.roundRect(x - 380, y - 34, 760, 68, 34); cg.fill();
+  cg.fillStyle = lvl > 0.5 ? '#ffb02e' : '#ff2a2a'; cg.beginPath(); cg.roundRect(x - 372, y - 26, Math.max(52, 744 * lvl), 52, 26); cg.fill();
+  // red down arrow
+  const ay = y + 70 + 8 * Math.sin(Date.now() * 0); cg.fillStyle = '#ff2a2a'; cg.beginPath(); cg.moveTo(x + 420, y + 34); cg.lineTo(x + 460, y - 10); cg.lineTo(x + 440, y - 10); cg.lineTo(x + 440, y - 50); cg.lineTo(x + 400, y - 50); cg.lineTo(x + 400, y - 10); cg.lineTo(x + 380, y - 10); cg.closePath(); cg.fill();
+  cg.restore();
+}
 function overlay(t) {
-  // English only, short, and only where it matters
-  // 1 hook
-  headline([{ s: 'UK VISAS', size: 150 }, { s: 'OPENING!', size: 150, c: '#ffd21a', gap: 150 }], t, 0.5, 4.4, H * 0.12);
-  if (H > W * 1.3) flagBadge(W / 2, H * 0.35, 220, win(t, 2.4, 4.4));   // vertical only; the square frame shows the 3D flag
+  // only place names, job names and numbers; everything else is shown with icons
+  const top = H * 0.17;
+  // 1 hook: flag + country name
+  flagBadge(W / 2, top, 240, win(t, 0.6, 4.4));
   geoLabel('UNITED KINGDOM', UKC[0], UKC[1], win(t, 2.6, 4.5), H > W * 1.3 ? -160 : -110);
-  // 2 good news, 2027 work visas
-  headline([{ s: 'BIG GOOD NEWS!', size: 110, c: '#7dff6a' }], t, 4.7, 8.0, H * 0.12);
-  bigNumber('2027', 'UK WORK VISAS', H * 0.2, win(t, 8.0, 13.5));
-  // 3 which visas, who benefits
-  headline([{ s: 'WHICH VISAS?', size: 120 }, { s: 'WHO BENEFITS?', size: 120, c: '#ffd21a', gap: 135 }], t, 13.8, 17.6, H * 0.12);
-  pill('WATCH TILL THE END', W / 2, H * 0.84, win(t, 17.6, 20.0), '#d81e1e', 60);
-  // 4 the official's statement, strict rules, people left
+  // 2 2027 + visa passport
+  bigNumber('2027', null, top, win(t, 5.0, 13.5));
+  passport(W * 0.82, H * 0.78, 190, win(t, 6.0, 13.5));
+  // 3 which visas / who benefits
+  question(W * 0.38, top, 150, win(t, 13.8, 19.8), t); passport(W * 0.62, top, 170, win(t, 14.3, 19.8));
+  // 4 official's statement in London, strict rules, people leaving
   geoLabel('LONDON', LONDON[0], LONDON[1], win(t, 20.2, 26.6), H > W * 1.3 ? -250 : -130, '#ff5a5a');
-  if (t > 21.4 && t < 26.8) {
-    const a = win(t, 21.4, 26.8); cg.save(); cg.globalAlpha = a; const y = H * 0.1, sc = 0.85 + 0.15 * backOut((t - 21.4) / 0.4);
-    cg.translate(W / 2, y + 95); cg.scale(sc, sc); cg.fillStyle = 'rgba(8,14,24,0.88)'; cg.beginPath(); cg.roundRect(-480, -95, 960, 210, 26); cg.fill(); cg.fillStyle = '#ffd21a'; cg.fillRect(-480, -95, 14, 210);
-    text('FORMER FOREIGN OFFICE', 10, -38, fitSize('FORMER FOREIGN OFFICE', 64, 880, EN), '#ffffff', EN, null); text('OFFICIAL SPEAKS OUT', 10, 48, fitSize('OFFICIAL SPEAKS OUT', 64, 880, EN), '#ffd21a', EN, null); cg.restore();
-  }
-  stamp('STRICT VISA RULES', null, W / 2, H * 0.78, win(t, 23.6, 26.8, 0.2), '#e02424');
-  headline([{ s: 'STUDENTS & WORKERS', size: 104 }, { s: 'LEFT THE UK', size: 130, c: '#ff5a5a', gap: 135 }], t, 27.2, 31.6, H * 0.12);
-  // 5 jobs locals don't do
+  passport(W / 2, top, 190, win(t, 23.4, 27.0), 'x', smooth(23.8, 24.3, t));
+  // 5 jobs (names kept)
   ICONS.forEach((ic) => geoLabel(ic.label, ic.lat, ic.lon, win(t, ic.t + 0.3, 41.0), ic.dy + 25, '#ffd21a', null, ic.dx));
-  headline([{ s: "LOCALS DON'T DO", size: 110 }, { s: 'THESE JOBS', size: 120, c: '#ff5a5a', gap: 130 }], t, 38.2, 41.0, H * 0.11);
-  // 6 run by foreign workers
-  headline([{ s: 'RUN BY', size: 110 }, { s: 'FOREIGN WORKERS', size: 120, c: '#ffd21a', gap: 130 }], t, 41.3, 47.0, H * 0.11);
-  // 7 shortage, all categories open
-  bigNumber('6 MONTHS – 1 YEAR', null, H * 0.14, win(t, 47.3, 52.2), '#ffffff', 120);
-  if (t > 48.4 && t < 52.4) {
-    const a = win(t, 48.4, 52.4); const lvl = 1 - 0.85 * easeOut((t - 48.6) / 2.6);
-    cg.save(); cg.globalAlpha = a; const x = W / 2, y = H * 0.8;
-    text('WORKERS & LABOUR', x, y - 95, 50, '#ffffff', EN, '#000', 0.14);
-    cg.fillStyle = 'rgba(0,0,0,0.6)'; cg.beginPath(); cg.roundRect(x - 380, y - 40, 760, 80, 40); cg.fill();
-    cg.fillStyle = lvl > 0.5 ? '#ffb02e' : '#ff2a2a'; cg.beginPath(); cg.roundRect(x - 372, y - 32, 744 * lvl, 64, 32); cg.fill();
-    text('SEVERE SHORTAGE', x, y + 100, 70, '#ff4a4a', EN, '#000', 0.14); cg.restore();
-  }
-  headline([{ s: 'ALL VISA CATEGORIES', size: 104 }, { s: 'TO OPEN', size: 130, c: '#7dff6a', gap: 135 }], t, 52.5, 56.0, H * 0.11);
-  stamp('VISAS OPEN', null, W / 2, H * 0.8, win(t, 53.3, 56.0, 0.2), '#16a34a');
-  // 8 get ready, doors open again
-  headline([{ s: 'GET READY!', size: 140, c: '#ffd21a' }], t, 56.2, 60.2, H * 0.12);
-  headline([{ s: "UK'S DOORS", size: 110 }, { s: 'OPEN AGAIN', size: 130, c: '#7dff6a', gap: 135 }], t, 57.3, 60.2, H * 0.78);
+  // 7 6 months - 1 year (calendar 6 -> 12), labour draining
+  calendar(W / 2, top, 190, win(t, 47.3, 52.3), t < 49.6 ? 6 : 12);
+  if (t > 48.4 && t < 52.4) laborMeter(W / 2, H * 0.82, win(t, 48.4, 52.4), 1 - 0.85 * easeOut((t - 48.6) / 2.6));
+  // all categories open
+  passport(W / 2, top, 190, win(t, 52.6, 56.0), 'v', smooth(53.2, 53.7, t));
   // quick white flashes on the big transitions
   for (const ft of [2.3, 6.7, 13.6, 20.0, 27.3, 32.0, 41.2, 47.3, 52.5, 56.2]) { const d = t - ft; if (d >= 0 && d < 0.14) { cg.fillStyle = `rgba(255,255,255,${0.32 * (1 - d / 0.14)})`; cg.fillRect(0, 0, W, H); } }
   // subtle cinematic vignette
