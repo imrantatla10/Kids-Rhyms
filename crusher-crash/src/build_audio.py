@@ -23,15 +23,15 @@ ev = json.load(open(os.path.join(ROOT, "audio/events.json")))
 TL = ev["timeline"]
 OUT_DUR = TL["outDuration"]
 SLOW = TL["slow"]
-SF = TL["slowFactor"]
+HEAVY_FLAGS = TL["heavy"]
 
 
 # ---------------------------------------------------------------- time mapping
 def segments():
     segs, s, o = [], 0.0, 0.0
-    for a, b in SLOW:
+    for a, b, f in SLOW:
         segs.append((s, a, o, 1.0)); o += a - s
-        segs.append((a, b, o, SF)); o += (b - a) / SF
+        segs.append((a, b, o, f)); o += (b - a) / f
         s = b
     segs.append((s, 1e9, o, 1.0))
     return segs
@@ -306,14 +306,17 @@ wind = fft_filter(noise(NO), 60, 900) * (0.6 + 0.4 * np.sin(2 * np.pi * to / 9.0
 mix[0] += wind * 0.05
 mix[1] += fft_filter(noise(NO), 60, 900) * (0.6 + 0.4 * np.cos(2 * np.pi * to / 11.0) ** 2) * 0.05
 
-for a, b in SLOW:
+for i, (a, b, f) in enumerate(SLOW):
     oa, ob = sim_to_out(a), sim_to_out(b)
-    add(mix, whoosh(0.9, True), oa - 0.55, gain=0.55)
-    add(mix, whoosh(0.6, False), ob - 0.25, gain=0.4)
+    big = HEAVY_FLAGS[i]
+    cam_in = oa - (1.1 if big else 0.75)
+    add(mix, whoosh(0.7, True), cam_in - 0.2, gain=0.5)          # camera zooms in
+    add(mix, whoosh(0.5, True), oa - 0.3, gain=0.35)             # slow-motion kicks in
+    add(mix, whoosh(0.9, False), ob + 0.2, gain=0.4)             # camera pulls back out
 for v in ev["vehicles"]:
-    if v["name"] in heavy:
-        add(mix, sub_boom(3.5), v["contactOut"], gain=0.9)
-        add(mix, crash(0.6, 1.0, 120), v["contactOut"], gain=0.5)  # crisp transient on top of the slowed one
+    big = v["name"] in heavy
+    add(mix, sub_boom(3.5 if big else 2.2), v["contactOut"], gain=0.9 if big else 0.55)
+    add(mix, crash(0.6, 1.0, 120), v["contactOut"], gain=0.5 if big else 0.4)  # crisp transient over the slowed one
 
 # ---------------------------------------------------------------- master
 mix = np.tanh(mix * 1.1) / np.tanh(1.1)

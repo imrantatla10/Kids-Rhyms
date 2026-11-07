@@ -3,7 +3,7 @@
 // renders identically, even across parallel render workers.
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { TIMELINE, outToSim, simToOut, slowAmountAtOut } from './timeline.js';
+import { TIMELINE, CRASH_TIMES, HEAVY, outToSim, simToOut, slowAmountAtOut } from './timeline.js';
 
 // ---------------------------------------------------------------- utilities
 function mulberry32(a) {
@@ -447,14 +447,14 @@ const SPECS = [
 
 // crash tuning per vehicle: target contact time (sim seconds) and how it wrecks
 const CRASH = [
-  { t: 4.5,  front: 1.05, roof: 0.06, pen: 1.1, rb: 2.6, yaw: 0.55, roll: 0.05, pitch: 0.35, hop: 0.45, push: 0.0, detach: ['bumperF', 'wheelFR'], shards: 160, chunks: 16 },
-  { t: 9.6,  front: 1.15, roof: 0.18, pen: 1.2, rb: 1.3, yaw: -0.4, roll: -0.08, pitch: 0.3, hop: 0.4, push: 0.6, detach: ['bumperF', 'doorL', 'wheelFL'], shards: 180, chunks: 18 },
-  { t: 14.8, front: 1.25, roof: 0.1, pen: 1.3, rb: 1.2, yaw: 0.3, roll: 0.12, pitch: 0.25, hop: 0.35, push: 0.7, detach: ['bumperF', 'bumperR', 'hood'], shards: 180, chunks: 20 },
-  { t: 20.2, front: 1.3, roof: 0.2, pen: 1.4, rb: 1.1, yaw: -0.65, roll: -0.06, pitch: 0.3, hop: 0.4, push: 0.8, detach: ['bumperF', 'rack', 'wheelFR'], shards: 220, chunks: 22 },
-  { t: 26.5, front: 2.3, roof: 0.35, bend: 0.75, pen: 3.4, rb: 0.9, yaw: 0.32, roll: 0.07, pitch: 0.22, hop: 0.6, push: 2.6, detach: ['bumperF', 'stopArm', 'wheelFL', 'lightsF'], shards: 650, chunks: 40, slow: true },
-  { t: 32.6, front: 1.35, roof: 0.12, pen: 1.4, rb: 1.2, yaw: 0.5, roll: 0.1, pitch: 0.3, hop: 0.45, push: 0.6, detach: ['bumperF', 'doorR', 'doorL'], shards: 220, chunks: 22 },
-  { t: 37.8, front: 1.45, roof: 0.12, pen: 1.5, rb: 1.2, yaw: -0.45, roll: -0.12, pitch: 0.35, hop: 0.55, push: 0.9, detach: ['bumperF', 'guard', 'wheelFR', 'tailgate'], shards: 200, chunks: 24 },
-  { t: 43.5, front: 2.1, roof: 0.25, bend: 0.35, pen: 4.0, rb: 0.7, yaw: -0.22, roll: -0.05, pitch: 0.2, hop: 0.5, push: 3.2, detach: ['bumperF', 'rollDoor', 'wheelFL', 'wheelRR', 'lightsF'], shards: 380, chunks: 46, slow: true },
+  { t: CRASH_TIMES[0],  front: 1.05, roof: 0.06, pen: 1.1, rb: 2.6, yaw: 0.55, roll: 0.05, pitch: 0.35, hop: 0.45, push: 0.0, detach: ['bumperF', 'wheelFR'], shards: 160, chunks: 16 },
+  { t: CRASH_TIMES[1],  front: 1.15, roof: 0.18, pen: 1.2, rb: 1.3, yaw: -0.4, roll: -0.08, pitch: 0.3, hop: 0.4, push: 0.6, detach: ['bumperF', 'doorL', 'wheelFL'], shards: 180, chunks: 18 },
+  { t: CRASH_TIMES[2], front: 1.25, roof: 0.1, pen: 1.3, rb: 1.2, yaw: 0.3, roll: 0.12, pitch: 0.25, hop: 0.35, push: 0.7, detach: ['bumperF', 'bumperR', 'hood'], shards: 180, chunks: 20 },
+  { t: CRASH_TIMES[3], front: 1.3, roof: 0.2, pen: 1.4, rb: 1.1, yaw: -0.65, roll: -0.06, pitch: 0.3, hop: 0.4, push: 0.8, detach: ['bumperF', 'rack', 'wheelFR'], shards: 220, chunks: 22 },
+  { t: CRASH_TIMES[4], front: 2.3, roof: 0.35, bend: 0.75, pen: 3.4, rb: 0.9, yaw: 0.32, roll: 0.07, pitch: 0.22, hop: 0.6, push: 2.6, detach: ['bumperF', 'stopArm', 'wheelFL', 'lightsF'], shards: 650, chunks: 40, slow: true },
+  { t: CRASH_TIMES[5], front: 1.35, roof: 0.12, pen: 1.4, rb: 1.2, yaw: 0.5, roll: 0.1, pitch: 0.3, hop: 0.45, push: 0.6, detach: ['bumperF', 'doorR', 'doorL'], shards: 220, chunks: 22 },
+  { t: CRASH_TIMES[6], front: 1.45, roof: 0.12, pen: 1.5, rb: 1.2, yaw: -0.45, roll: -0.12, pitch: 0.35, hop: 0.55, push: 0.9, detach: ['bumperF', 'guard', 'wheelFR', 'tailgate'], shards: 200, chunks: 24 },
+  { t: CRASH_TIMES[7], front: 2.1, roof: 0.25, bend: 0.35, pen: 4.0, rb: 0.7, yaw: -0.22, roll: -0.05, pitch: 0.2, hop: 0.5, push: 3.2, detach: ['bumperF', 'rollDoor', 'wheelFL', 'wheelRR', 'lightsF'], shards: 380, chunks: 46, slow: true },
 ];
 
 const vehicles = [];
@@ -568,13 +568,13 @@ function buildVehicle(spec, idx) {
   const dual = spec.bus || spec.truck;
   for (const wz of spec.wheelZ) for (const s of [-1, 1]) {
     const name = 'wheel' + (wz > 0 ? 'F' : 'R') + (s < 0 ? 'L' : 'R');
-    const g = new THREE.Group();
-    const tire = new THREE.Mesh(tireG, MAT.tire); tire.castShadow = true; g.add(tire);
-    const hub = new THREE.Mesh(hubG, MAT.hub); g.add(hub);
-    if (dual && wz < 0) { const t2 = new THREE.Mesh(tireG, MAT.tire); t2.position.x = -s * 0.28; t2.castShadow = true; g.add(t2); }
+    const g = new THREE.Group(); const spin = new THREE.Group(); g.add(spin);
+    const tire = new THREE.Mesh(tireG, MAT.tire); tire.castShadow = true; spin.add(tire);
+    const hub = new THREE.Mesh(hubG, MAT.hub); spin.add(hub);
+    if (dual && wz < 0) { const t2 = new THREE.Mesh(tireG, MAT.tire); t2.position.x = -s * 0.28; t2.castShadow = true; spin.add(t2); }
     g.position.set(s * (hw - 0.12), spec.wheelR, wz);
     root.add(g);
-    v.wheels.push({ g, name, z0: wz, attached: true });
+    v.wheels.push({ g, spin, name, z0: wz, side: s, attached: true });
     v.parts[name] = [g];
   }
   return v;
@@ -818,6 +818,7 @@ function stepVehicle(v, dt) {
     v.z = v.zc + pen - rb;
     v.wheelRot += Math.max(0, v.v0 * Math.exp(-u / tau)) * dt / sp.wheelR;
     v.def.front = cr.front * clamp(pen / cr.pen, 0, 1);
+    v.tireCrush = clamp(pen / cr.pen, 0, 1);
     v.def.roof = cr.roof * smooth(0.05, 0.5, u);
     v.def.bend = (cr.bend || 0) * smooth(0.05, 0.6, u);
     v.defDirty = true;
@@ -850,6 +851,7 @@ function startCrash(v) {
   v.state = 'crash'; v.tc = t; v.v0 = v.speed; v.zc = c - sp.L / 2;
   const at = new THREE.Vector3(v.x, roadH(c) + sp.clr + 0.6, c);
   EVENTS.vehicles[v.idx].contact = t;
+  v.contactZ = c;
   EVENTS.vehicles[v.idx].hitDrum = !hit;
   EVENTS.vehicles[v.idx].speed = v.speed;
   for (const p of cr.detach) spawnPart(v, p, v.speed);
@@ -921,7 +923,15 @@ function syncVisuals() {
     const gy = roadH(v.z) + v.yOff;
     v.root.position.set(v.x, gy, v.z);
     v.root.rotation.set(v.pitch, v.yaw, v.roll, 'YXZ');
-    for (const w of v.wheels) if (w.attached) w.g.rotation.x = v.wheelRot;
+    for (const w of v.wheels) if (w.attached) {
+      w.spin.rotation.x = v.wheelRot;
+      // tyres squash, splay and buckle as the front end is crushed
+      const k = (w.z0 > 0 ? 1 : (v.spec.bus || v.spec.truck ? 0.45 : 0.25)) * (v.tireCrush || 0);
+      w.g.scale.set(1 + 0.3 * k, 1 - 0.42 * k, 1 + 0.12 * k);
+      w.g.rotation.z = w.side * 0.45 * k;
+      w.g.rotation.y = w.side * 0.25 * k;
+      w.g.position.y = v.spec.wheelR * (1 - 0.42 * k);
+    }
   }
   chunkMesh.count = chunks.length;
   chunks.forEach((b, i) => { if (b.dirty) { _m.compose(b.pos, b.quat, b.size); chunkMesh.setMatrixAt(i, _m); b.dirty = false; } });
@@ -951,8 +961,64 @@ function drawTitle() {
   }
 }
 
+// ---------------------------------------------------------------- camera director
+const WIDE = { pos: new THREE.Vector3(0, 24, 31), look: new THREE.Vector3(0, 0, -40), fov: 64 };
+const SIDES = [-1, 1, -1, 1, 1, -1, 1, -1];
+const SHOTS = CRASH_TIMES.map((t, i) => {
+  const [a, b] = TIMELINE.slow[i];
+  const inStart = simToOut(a) - (HEAVY[i] ? 1.1 : 0.75);
+  return { i, heavy: HEAVY[i], inStart, inEnd: inStart + 0.45, outStart: simToOut(b) + 0.25, outEnd: simToOut(b) + 1.0, side: SIDES[i] };
+});
+const easeIO = (x) => { x = clamp(x, 0, 1); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+function focusOf(v) {
+  const big = v.spec.bus || v.spec.truck;
+  const fz = (v.state === 'drive' || v.state === 'wait') ? contactZFor(v).c : v.contactZ;
+  const z = fz - (big ? 2.2 : 0.7);
+  return new THREE.Vector3(v.spec.lane * 0.7, roadH(z) + (big ? 1.4 : 0.7), z);
+}
+function closeShot(sh, tOut) {
+  const v = vehicles[sh.i], f = focusOf(v);
+  const prog = clamp((tOut - sh.inStart) / (sh.outEnd - sh.inStart), 0, 1);
+  let theta, dist, h, fov;
+  if (sh.i === 0) { theta = 2.05 - 0.35 * prog; dist = 10; h = 2.6; fov = 46; }          // sees it slam the drums
+  else if (sh.heavy) {
+    const mid = (sh.inEnd + sh.outStart) / 2;
+    if (tOut < mid) { theta = 1.0 + 0.3 * prog; dist = 17; h = 3.2; fov = 50; }           // low side angle
+    else { theta = 0.5 + 0.25 * prog; dist = 14; h = 14; fov = 54; }                       // high angle over the pile
+  } else { theta = 1.08 + 0.4 * prog; dist = 10.5; h = 2.4; fov = 46; }
+  const pos = new THREE.Vector3(f.x + sh.side * Math.sin(theta) * dist, 0, f.z + Math.cos(theta) * dist);
+  pos.y = Math.max(roadH(pos.z) + h, terrainH(pos.x, pos.z) + 1.6);
+  return { pos, look: f, fov: fov - 6 * prog };
+}
+function direct(tOut) {
+  let cam = WIDE, k = 0, sh = null;
+  for (const s of SHOTS) if (tOut >= s.inStart && tOut <= s.outEnd) { sh = s; break; }
+  if (sh) {
+    cam = closeShot(sh, tOut);
+    k = tOut < sh.inEnd ? easeIO((tOut - sh.inStart) / (sh.inEnd - sh.inStart))
+      : tOut > sh.outStart ? 1 - easeIO((tOut - sh.outStart) / (sh.outEnd - sh.outStart)) : 1;
+  }
+  const pos = WIDE.pos.clone().lerp(cam.pos, k), look = WIDE.look.clone().lerp(cam.look, k);
+  // impact shake on the close-ups
+  if (sh) {
+    const v = vehicles[sh.i];
+    if (v.tc !== undefined) {
+      const dt = tOut - simToOut(v.tc);
+      if (dt >= 0 && dt < 1.2) {
+        const a = (sh.heavy ? 0.22 : 0.12) * Math.exp(-dt / 0.25) * k;
+        pos.x += a * Math.sin(dt * 83); pos.y += a * Math.sin(dt * 71 + 1); look.x += a * 0.5 * Math.sin(dt * 59);
+      }
+    }
+  }
+  camera.position.copy(pos);
+  camera.fov = WIDE.fov + (cam.fov - WIDE.fov) * k;
+  camera.updateProjectionMatrix();
+  camera.lookAt(look);
+}
+
 function renderFrame(tOut) {
   syncVisuals();
+  direct(tOut);
   renderer.render(scene, camera);
   cg.drawImage(glCanvas, 0, 0);
   // slow-motion look: soft vignette while slowed, white flash on enter/exit
