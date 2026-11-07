@@ -834,7 +834,7 @@ function overlay(t) {
   if (L === 17) { banner('SEA PULLS BACK', H * 0.12, A(0.08, 0.2), '#0b6fb8', 60); const a = A(0.62, 0.7); if (a > 0) { const fl = 0.75 + 0.25 * Math.sin(t * 18); banner("DON'T LOOK. RUN UP!", H * 0.22, a * fl, '#d81e1e', 70); } }
   if (L === 18) tag('EMPTY ON PURPOSE', V(0, 2.2, -2.2), 0, -520, A(0.45, 0.55), '#7dff6a');
   if (L === 19) banner('THE WAVE GOES THROUGH', H * 0.16, A(0.3, 0.4), '#0b6fb8', 58);
-  if (L === 20) { tag('BLANKET', V(-0.6, ROOF2 + 0.42, 0.6), -260, -250, A(0.05, 0.15), '#ff6a5a'); tag('RADIO', V(0.9, ROOF2 + 0.6, 1.2), 240, -330, A(0.2, 0.3), '#c9ced6'); tag('CRAB', crab.position.clone(), 160, 260, A(0.62, 0.72), '#ff8a4a'); }
+  if (L === 20) { tag('BLANKET', V(-0.6, ROOF2 + 0.42, 0.6), -60, -330, A(0.05, 0.15), '#ff6a5a'); tag('RADIO', V(0.9, ROOF2 + 0.6, 1.2), 240, -330, A(0.2, 0.3), '#c9ced6'); tag('CRAB', crab.position.clone(), 160, 260, A(0.62, 0.72), '#ff8a4a'); }
   if (L === 21) { const a = smooth(0.08, 0.3, p); if (a > 0) { bigNumber('CONGRATULATIONS!', null, W / 2, H * 0.17, a, '#ffd21a', 104); cg.globalAlpha = a; txt('YOU BUILT A', W / 2, H * 0.17 + 110, 60, '#fff', '#000', 0.16); txt('TSUNAMI TOWER', W / 2, H * 0.17 + 190, 96, '#fff', '#0b2a4a', 0.16); cg.globalAlpha = 1; } }
   caption(t);
   // cut flash between lines

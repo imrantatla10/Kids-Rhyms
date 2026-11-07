@@ -7,10 +7,13 @@ tsunami tower.
 **Video:** [`output/Tsunami_Tower_vertical.mp4`](output/Tsunami_Tower_vertical.mp4)
 
 ## Voiceover
-- **ElevenLabs**, voice *Dan - Energetic & Conversational* (`eleven_v4`). The pauses
-  between sentences are tightened, then the take is sped up 1.2× (pitch kept), into `audio/vo.wav`. Raw take: `audio/vo_raw.mp3`.
-- Word timestamps come from ElevenLabs Scribe (`audio/words_raw.json`), mapped onto
-  that edit in `src/timing.json`. They drive the scene cuts and the
+- **ElevenLabs**, voice *Dan - Energetic & Conversational* (`eleven_v4`), **take 2**
+  (`audio/vo_take2.mp3`, the take the user picked).
+- `src/prep_vo.py` finds the pauses in the audio, shortens any longer than 0.18 s
+  to 0.12 s, then time-stretches about 1.15× (pitch kept) so the voice ends at
+  63.4 s. Output: `audio/vo.wav`.
+- Word timestamps come from ElevenLabs Scribe (`audio/words_take2.json`) and are
+  remapped onto that edit in `src/timing.json`. They drive the scene cuts and the
   word-by-word captions.
 
 ## Story beats (one scene per line)
@@ -55,6 +58,7 @@ The effects are ducked under the voice.
 ## Rebuild
 ```bash
 npm install
+python3 src/prep_vo.py                       # -> audio/vo.wav + src/timing.json
 node src/render.mjs --stills 3,25,54          # previews (seconds)
 python3 src/build_audio.py                    # -> audio/final_mix.wav
 node src/render.mjs --workers 4               # -> output/video_silent.mp4
