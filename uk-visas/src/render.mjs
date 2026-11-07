@@ -12,7 +12,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const SCALE = parseFloat(opt('--scale', '1'));
-const W = Math.round(1080 * SCALE), H = Math.round(1920 * SCALE);
+const [BW, BH] = opt('--size', '1080x1080').split('x').map(Number);   // default: square 1080x1080
+const W = Math.round(BW * SCALE), H = Math.round(BH * SCALE);
 const FPS = 30;
 let FRAMES = 0;
 
@@ -75,7 +76,7 @@ async function events() {
 async function worker(id, f0, f1) {
   const out = path.join(ROOT, `output/seg_${id}.mp4`);
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
-    '-vf', SCALE !== 1 ? 'scale=1080:1920:flags=lanczos' : 'null', '-c:v', 'libx264', '-preset', 'medium', '-crf', '17', '-pix_fmt', 'yuv420p', '-r', String(FPS), out],
+    '-vf', SCALE !== 1 ? `scale=${BW}:${BH}:flags=lanczos` : 'null', '-c:v', 'libx264', '-preset', 'medium', '-crf', '17', '-pix_fmt', 'yuv420p', '-r', String(FPS), out],
     { stdio: ['pipe', 'inherit', 'inherit'] });
   const browser = await launch(); const page = await openPage(browser);
   const t0 = Date.now();

@@ -309,10 +309,10 @@ const KF = [
   [6.8, 40, 22, 2.3, 8, 0],          // pull out: the world, arcs converge on the UK
   [11.4, 44, 8, 1.9, 14, -12],
   [13.6, 53.8, -2.2, 0.6, 34, 0],
-  [16.8, 53.6, -2.4, 0.5, 46, 55],   // orbit the UK (questions)
-  [20.0, 51.5, -0.05, 0.26, 50, 75],  // dive to London
-  [24.5, 51.5, -0.02, 0.22, 56, 100],
-  [27.4, 49, 6, 1.15, 22, 40],       // pull back: people leaving
+  [16.8, 53.6, -2.4, 0.5, 46, 40],   // orbit the UK (questions)
+  [20.0, 51.5, -0.05, 0.26, 50, 10],  // dive to London (north up)
+  [24.5, 51.5, -0.02, 0.22, 56, 25],
+  [27.4, 49, 6, 1.15, 22, 15],       // pull back: people leaving
   [31.8, 53.4, -1.6, 0.5, 42, 15],
   [36.2, 52.9, -1.1, 0.4, 48, -20],  // jobs (left to right sweep)
   [40.6, 52.9, -1.0, 0.4, 48, 22],
@@ -471,8 +471,8 @@ function overlay(t) {
   // English only, short, and only where it matters
   // 1 hook
   headline([{ s: 'UK VISAS', size: 150 }, { s: 'OPENING!', size: 150, c: '#ffd21a', gap: 150 }], t, 0.5, 4.4, H * 0.12);
-  flagBadge(W / 2, H * 0.35, 220, win(t, 2.4, 4.4));
-  geoLabel('UNITED KINGDOM', UKC[0], UKC[1], win(t, 2.6, 4.5), -160);
+  if (H > W * 1.3) flagBadge(W / 2, H * 0.35, 220, win(t, 2.4, 4.4));   // vertical only; the square frame shows the 3D flag
+  geoLabel('UNITED KINGDOM', UKC[0], UKC[1], win(t, 2.6, 4.5), H > W * 1.3 ? -160 : -110);
   // 2 good news, 2027 work visas
   headline([{ s: 'BIG GOOD NEWS!', size: 110, c: '#7dff6a' }], t, 4.7, 8.0, H * 0.12);
   bigNumber('2027', 'UK WORK VISAS', H * 0.2, win(t, 8.0, 13.5));
@@ -480,7 +480,7 @@ function overlay(t) {
   headline([{ s: 'WHICH VISAS?', size: 120 }, { s: 'WHO BENEFITS?', size: 120, c: '#ffd21a', gap: 135 }], t, 13.8, 17.6, H * 0.12);
   pill('WATCH TILL THE END', W / 2, H * 0.84, win(t, 17.6, 20.0), '#d81e1e', 60);
   // 4 the official's statement, strict rules, people left
-  geoLabel('LONDON', LONDON[0], LONDON[1], win(t, 20.2, 26.6), -250, '#ff5a5a');
+  geoLabel('LONDON', LONDON[0], LONDON[1], win(t, 20.2, 26.6), H > W * 1.3 ? -250 : -130, '#ff5a5a');
   if (t > 21.4 && t < 26.8) {
     const a = win(t, 21.4, 26.8); cg.save(); cg.globalAlpha = a; const y = H * 0.1, sc = 0.85 + 0.15 * backOut((t - 21.4) / 0.4);
     cg.translate(W / 2, y + 95); cg.scale(sc, sc); cg.fillStyle = 'rgba(8,14,24,0.88)'; cg.beginPath(); cg.roundRect(-480, -95, 960, 210, 26); cg.fill(); cg.fillStyle = '#ffd21a'; cg.fillRect(-480, -95, 14, 210);

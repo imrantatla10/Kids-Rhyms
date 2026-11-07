@@ -1,10 +1,10 @@
 # UK Work Visas 2027: 3D globe video (visuals only)
 
-A vertical (9:16, 1080×1920, 30 fps) **60-second** 3D map video that follows the
+A **square 1080×1080**, 30 fps, **60-second** 3D map video that follows the
 user's Hindi script scene by scene. On-screen text is short English only. It has **no audio at all**: no voiceover, music or
 sound effects. The voiceover is added later in editing.
 
-**Video:** [`output/UK_Work_Visas_2027_globe_vertical.mp4`](output/UK_Work_Visas_2027_globe_vertical.mp4)
+**Video:** [`output/UK_Work_Visas_2027_globe_1080x1080.mp4`](output/UK_Work_Visas_2027_globe_1080x1080.mp4)
 
 ## Scenes (approximate times for the voiceover edit)
 | Time | Script | Visuals |
@@ -37,6 +37,6 @@ world" without labelling any country.
 npm install
 node src/prep_geo.mjs                     # -> data/geo.json
 node src/render.mjs --stills 3.5,23,38.5  # previews
-node src/render.mjs --workers 4           # -> output/video_silent.mp4
-ffmpeg -i output/video_silent.mp4 -c:v libx264 -crf 20 -preset slow -an output/UK_Work_Visas_2027_globe_vertical.mp4
+node src/render.mjs --workers 4           # -> output/video_silent.mp4 (1080x1080; --size 1080x1920 for vertical)
+ffmpeg -i output/video_silent.mp4 -c:v libx264 -crf 20 -preset slow -an output/UK_Work_Visas_2027_globe_1080x1080.mp4
 ```
