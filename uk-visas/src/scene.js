@@ -224,10 +224,10 @@ const marketIcon = iconGroup(); {
   for (let k = 0; k < 12; k++) { const f = new THREE.Mesh(new THREE.SphereGeometry(0.09, 10, 8), mat(fruit[k % 4], 0.5)); f.position.set(-0.7 + (k % 6) * 0.28, 0.78, -0.15 + Math.floor(k / 6) * 0.3); g.add(f); }
 }
 const ICONS = [
-  { g: deliveryIcon, lat: 52.75, lon: -3.0, label: 'DELIVERY', hi: 'डिलीवरी', t: 33.2, dx: -230, dy: -40 },
-  { g: warehouseIcon, lat: 54.3, lon: -2.2, label: 'WAREHOUSES', hi: 'वेयरहाउस', t: 34.5, dx: -150, dy: -230 },
-  { g: farmIcon, lat: 52.75, lon: 0.9, label: 'FARM WORK', hi: 'खेती', t: 35.8, dx: 200, dy: -230 },
-  { g: marketIcon, lat: 51.35, lon: -0.6, label: 'MARKET JOBS', hi: 'मार्केट', t: 37.1, dx: 210, dy: 110 },
+  { g: deliveryIcon, lat: 52.75, lon: -3.0, label: 'DELIVERY', t: 33.2, dx: -230, dy: -40 },
+  { g: warehouseIcon, lat: 54.3, lon: -2.2, label: 'WAREHOUSES', t: 34.5, dx: -150, dy: -230 },
+  { g: farmIcon, lat: 52.75, lon: 0.9, label: 'FARM WORK', t: 35.8, dx: 200, dy: -230 },
+  { g: marketIcon, lat: 51.35, lon: -0.6, label: 'MARKET JOBS', t: 37.1, dx: 210, dy: 110 },
 ];
 for (const ic of ICONS) ic.g.scale.setScalar(0.014);
 
@@ -428,10 +428,10 @@ function headline(lines, t, t0, t1, y = H * 0.16) {
   cg.save(); cg.globalAlpha = a;
   lines.forEach((l, i) => {
     const li = win(t, t0 + i * 0.25, t1), sc = 0.7 + 0.3 * backOut((t - t0 - i * 0.25) / 0.4);
-    const size = fitSize(l.s, l.size || 100, W - 90);
+    const size = fitSize(l.s, l.size || 100, W - 90, EN);
     cg.save(); cg.globalAlpha = a * li; cg.translate(W / 2, y + i * (l.gap || 120)); cg.scale(sc, sc);
     cg.shadowColor = 'rgba(0,0,0,0.6)'; cg.shadowBlur = 24;
-    text(l.s, 0, 0, size, l.c || '#ffffff', l.en ? EN : HI, '#0b0f17', 0.14);
+    text(l.s, 0, 0, size, l.c || '#ffffff', EN, '#0b0f17', 0.14);
     cg.restore();
   });
   cg.restore();
@@ -468,50 +468,46 @@ function stamp(str, sub, x, y, a, color) {
   text(str, 0, -2, 70, color, EN, '#ffffff', 0.06); if (sub) text(sub, 0, 70, 52, color, HI, '#ffffff', 0.06); cg.restore();
 }
 function overlay(t) {
+  // English only, short, and only where it matters
   // 1 hook
-  headline([{ s: 'इंग्लैंड में खुलेंगे', size: 96 }, { s: 'ढेरों वीज़े!', size: 150, c: '#ffd21a', gap: 150 }], t, 0.5, 4.4, H * 0.13);
-  flagBadge(W / 2, H * 0.355, 220, win(t, 2.4, 4.4));
+  headline([{ s: 'UK VISAS', size: 150 }, { s: 'OPENING!', size: 150, c: '#ffd21a', gap: 150 }], t, 0.5, 4.4, H * 0.12);
+  flagBadge(W / 2, H * 0.35, 220, win(t, 2.4, 4.4));
   geoLabel('UNITED KINGDOM', UKC[0], UKC[1], win(t, 2.6, 4.5), -160);
-  // 2 good news, 2027, work visas
-  headline([{ s: 'बहुत बड़ी ख़ुशख़बरी!', size: 100, c: '#7dff6a' }], t, 4.7, 8.2, H * 0.12);
-  bigNumber('2027', 'UK WORK VISAS', H * 0.2, win(t, 8.0, 11.6));
-  headline([{ s: 'ग़ैर-मुल्कियों के लिए', size: 82 }, { s: 'अच्छी ख़बर!', size: 110, c: '#ffd21a', gap: 120 }], t, 11.5, 13.6, H * 0.12);
-  // 3 which visas, who benefits, watch till end
-  headline([{ s: 'कौन-कौन से वीज़े?', size: 104 }, { s: 'किसे मिलेगा फ़ायदा?', size: 104, c: '#ffd21a', gap: 130 }], t, 13.8, 17.6, H * 0.12);
-  pill('पूरी वीडियो ज़रूर देखिए!', W / 2, H * 0.84, win(t, 17.6, 20.0), '#d81e1e', 64, HI);
+  // 2 good news, 2027 work visas
+  headline([{ s: 'BIG GOOD NEWS!', size: 110, c: '#7dff6a' }], t, 4.7, 8.0, H * 0.12);
+  bigNumber('2027', 'UK WORK VISAS', H * 0.2, win(t, 8.0, 13.5));
+  // 3 which visas, who benefits
+  headline([{ s: 'WHICH VISAS?', size: 120 }, { s: 'WHO BENEFITS?', size: 120, c: '#ffd21a', gap: 135 }], t, 13.8, 17.6, H * 0.12);
+  pill('WATCH TILL THE END', W / 2, H * 0.84, win(t, 17.6, 20.0), '#d81e1e', 60);
   // 4 the official's statement, strict rules, people left
   geoLabel('LONDON', LONDON[0], LONDON[1], win(t, 20.2, 26.6), -250, '#ff5a5a');
   if (t > 21.4 && t < 26.8) {
     const a = win(t, 21.4, 26.8); cg.save(); cg.globalAlpha = a; const y = H * 0.1, sc = 0.85 + 0.15 * backOut((t - 21.4) / 0.4);
     cg.translate(W / 2, y + 95); cg.scale(sc, sc); cg.fillStyle = 'rgba(8,14,24,0.88)'; cg.beginPath(); cg.roundRect(-480, -95, 960, 210, 26); cg.fill(); cg.fillStyle = '#ffd21a'; cg.fillRect(-480, -95, 14, 210);
-    text('पूर्व फ़ॉरेन ऑफ़िस अफ़सर', 10, -38, 70, '#ffffff', HI, null); text('का सनसनीख़ेज़ बयान', 10, 48, 70, '#ffd21a', HI, null); cg.restore();
+    text('FORMER FOREIGN OFFICE', 10, -38, fitSize('FORMER FOREIGN OFFICE', 64, 880, EN), '#ffffff', EN, null); text('OFFICIAL SPEAKS OUT', 10, 48, fitSize('OFFICIAL SPEAKS OUT', 64, 880, EN), '#ffd21a', EN, null); cg.restore();
   }
-  stamp('STRICT VISA RULES', 'वीज़ों पर सख़्ती', W / 2, H * 0.78, win(t, 23.6, 26.8, 0.2), '#e02424');
-  headline([{ s: 'स्टूडेंट्स और वर्कर्स', size: 96 }, { s: 'मुल्क छोड़ गए!', size: 120, c: '#ff5a5a', gap: 130 }], t, 27.2, 31.6, H * 0.12);
-  pill('STUDENTS & WORKERS LEFT THE UK', W / 2, H * 0.85, win(t, 27.8, 31.6), '#b71c1c', 44);
+  stamp('STRICT VISA RULES', null, W / 2, H * 0.78, win(t, 23.6, 26.8, 0.2), '#e02424');
+  headline([{ s: 'STUDENTS & WORKERS', size: 104 }, { s: 'LEFT THE UK', size: 130, c: '#ff5a5a', gap: 135 }], t, 27.2, 31.6, H * 0.12);
   // 5 jobs locals don't do
-  headline([{ s: 'असल हक़ीक़त', size: 110, c: '#ffd21a' }], t, 32.0, 35.0, H * 0.12);
-  ICONS.forEach((ic) => geoLabel(ic.label, ic.lat, ic.lon, win(t, ic.t + 0.3, 41.0), ic.dy, '#ffd21a', ic.hi, ic.dx));
-  headline([{ s: 'ये काम लोकल लोग', size: 96 }, { s: 'बिल्कुल नहीं करते!', size: 112, c: '#ff5a5a', gap: 125 }], t, 38.2, 41.0, H * 0.11);
+  ICONS.forEach((ic) => geoLabel(ic.label, ic.lat, ic.lon, win(t, ic.t + 0.3, 41.0), ic.dy + 25, '#ffd21a', null, ic.dx));
+  headline([{ s: "LOCALS DON'T DO", size: 110 }, { s: 'THESE JOBS', size: 120, c: '#ff5a5a', gap: 130 }], t, 38.2, 41.0, H * 0.11);
   // 6 run by foreign workers
-  headline([{ s: 'सब ग़ैर-मुल्की', size: 104 }, { s: 'वर्कर्स चलाते हैं!', size: 112, c: '#ffd21a', gap: 125 }], t, 41.3, 44.1, H * 0.11);
-  headline([{ s: 'इनके बग़ैर इंग्लैंड का', size: 88 }, { s: 'निज़ाम नहीं चल सकता!', size: 100, c: '#ff5a5a', gap: 115 }], t, 44.1, 47.0, H * 0.11);
+  headline([{ s: 'RUN BY', size: 110 }, { s: 'FOREIGN WORKERS', size: 120, c: '#ffd21a', gap: 130 }], t, 41.3, 47.0, H * 0.11);
   // 7 shortage, all categories open
   bigNumber('6 MONTHS – 1 YEAR', null, H * 0.14, win(t, 47.3, 52.2), '#ffffff', 120);
-  headline([{ s: '6 महीने या 1 साल में', size: 80, c: '#ffd21a' }], t, 47.5, 52.2, H * 0.22);
   if (t > 48.4 && t < 52.4) {
     const a = win(t, 48.4, 52.4); const lvl = 1 - 0.85 * easeOut((t - 48.6) / 2.6);
     cg.save(); cg.globalAlpha = a; const x = W / 2, y = H * 0.8;
     text('WORKERS & LABOUR', x, y - 95, 50, '#ffffff', EN, '#000', 0.14);
     cg.fillStyle = 'rgba(0,0,0,0.6)'; cg.beginPath(); cg.roundRect(x - 380, y - 40, 760, 80, 40); cg.fill();
     cg.fillStyle = lvl > 0.5 ? '#ffb02e' : '#ff2a2a'; cg.beginPath(); cg.roundRect(x - 372, y - 32, 744 * lvl, 64, 32); cg.fill();
-    text('भारी क़िल्लत!', x, y + 100, 80, '#ff4a4a', HI, '#000', 0.14); cg.restore();
+    text('SEVERE SHORTAGE', x, y + 100, 70, '#ff4a4a', EN, '#000', 0.14); cg.restore();
   }
-  headline([{ s: 'तमाम कैटेगरीज़ के', size: 96 }, { s: 'वीज़े खोलने पड़ेंगे!', size: 112, c: '#7dff6a', gap: 125 }], t, 52.5, 56.0, H * 0.11);
-  stamp('VISAS OPEN', 'वीज़े खुलेंगे', W / 2, H * 0.8, win(t, 53.3, 56.0, 0.2), '#16a34a');
+  headline([{ s: 'ALL VISA CATEGORIES', size: 104 }, { s: 'TO OPEN', size: 130, c: '#7dff6a', gap: 135 }], t, 52.5, 56.0, H * 0.11);
+  stamp('VISAS OPEN', null, W / 2, H * 0.8, win(t, 53.3, 56.0, 0.2), '#16a34a');
   // 8 get ready, doors open again
-  headline([{ s: 'हो जाइए तैयार!', size: 130, c: '#ffd21a' }], t, 56.2, 60.2, H * 0.12);
-  headline([{ s: 'इंग्लैंड के दरवाज़े', size: 92 }, { s: 'फिर से खुलेंगे!', size: 116, c: '#7dff6a', gap: 125 }], t, 57.3, 60.2, H * 0.78);
+  headline([{ s: 'GET READY!', size: 140, c: '#ffd21a' }], t, 56.2, 60.2, H * 0.12);
+  headline([{ s: "UK'S DOORS", size: 110 }, { s: 'OPEN AGAIN', size: 130, c: '#7dff6a', gap: 135 }], t, 57.3, 60.2, H * 0.78);
   // quick white flashes on the big transitions
   for (const ft of [2.3, 6.7, 13.6, 20.0, 27.3, 32.0, 41.2, 47.3, 52.5, 56.2]) { const d = t - ft; if (d >= 0 && d < 0.14) { cg.fillStyle = `rgba(255,255,255,${0.32 * (1 - d / 0.14)})`; cg.fillRect(0, 0, W, H); } }
   // subtle cinematic vignette
