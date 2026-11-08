@@ -1,0 +1,5 @@
+__pycache__/
+node_modules/
+output/stills/
+output/frames/
+audio/take1.mp3
