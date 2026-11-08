@@ -3,3 +3,7 @@ node_modules/
 output/stills/
 output/frames/
 audio/take1.mp3
+audio/take2.mp3
+audio/final_mix.wav
+output/sheet*.jpg
+output/log_*.txt
