@@ -6,7 +6,7 @@ An awareness short: a guy tries to impress a girl at the gym, makes her uncomfor
 
 **Video:** [`output/The_Gym_Show_Off_vertical.mp4`](output/The_Gym_Show_Off_vertical.mp4)
 
-- **Voice:** ElevenLabs, voice *Adam* (premade, American), model `eleven_v4`, take 1 → `audio/voice_adam.mp3`. ElevenLabs was used for the voice only.
+- **Voice:** ElevenLabs, voice *Adam* (premade, American), model `eleven_v4`, take 2 → `audio/voice_adam.mp3` (animation choreographed on take 1 and time-warped to take 2 phrase anchors). ElevenLabs was used for the voice only.
 - **Visuals:** everything is procedural, built in three.js and rendered headless with Playwright. That covers:
   - the gym, with a glass storefront, the street outside, equipment, neon, light cones and dust
   - 9 rigged characters: the guy, the girl, 2 security guards, a police officer, desk staff and 3 gym-goers

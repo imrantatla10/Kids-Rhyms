@@ -445,7 +445,7 @@ function bigText(lines, t, a, b, y) {
 function drawOverlay(t) {
   og.clearRect(0, 0, W, H); og.drawImage(renderer.domElement, 0, 0);
   bigText([{ t: 'THE GYM', size: 120 }, { t: 'SHOW-OFF', size: 160, c: '#ffb21e', glow: 'rgba(255,160,20,.6)' }, { t: 'LET\'S SEE WHAT HAPPENS…', size: 40, ls: 6, c: '#dddddd', pre: 20, d: .9 }], t, .3, 4.0, 470 * S);
-  if (t < 53.6) drawCaption(t);
+  if (t < 54.4) drawCaption(t);
   drawCard(t); drawAlert(t);
   bigText([{ t: 'CONFIDENCE', size: 130 }, { t: 'IS ATTRACTIVE.', size: 104, c: '#3fe0a0', glow: 'rgba(40,220,150,.55)' }], t, 54.5, 57.25, 470 * S);
   bigText([{ t: 'MAKING SOMEONE', size: 92 }, { t: 'UNCOMFORTABLE', size: 112, c: '#ff4a3a', glow: 'rgba(255,60,40,.6)' }, { t: 'IS NEVER OKAY.', size: 112 }, { t: 'RESPECT  ·  BOUNDARIES  ·  CONSENT', size: 34, ls: 5, c: '#cfcfcf', pre: 40, d: 1.4 }], t, 57.35, 62.3, 440 * S);
@@ -607,7 +607,10 @@ window.renderAt = function (t) {
   grade.uniforms.uT.value = t; grade.uniforms.uFade.value = FX.fade; grade.uniforms.uRed.value = FX.red; grade.uniforms.uDesat.value = FX.desat;
   composer.render();
 };
-window.frame = (t) => { window.renderAt(t); return drawOverlay(t).toDataURL('image/jpeg', 0.92); };
+const WARP = [[0.0, 0.0], [4.0, 3.94], [5.9, 5.78], [10.86, 10.89], [17.08, 17.11], [18.56, 18.65], [23.29, 23.46], [24.0, 24.24], [26.9, 27.18], [28.87, 29.13], [29.94, 30.18], [31.92, 32.31], [32.71, 33.21], [34.05, 34.63], [36.82, 37.55], [37.99, 38.69], [40.66, 41.28], [43.84, 44.47], [48.39, 48.84], [49.44, 49.88], [53.09, 53.63], [54.13, 54.64], [56.1, 56.55], [59.36, 59.72], [62.5, 62.5]];
+const warp = t => { for (let i = 1; i < WARP.length; i++) if (t <= WARP[i][0]) { const [a0, b0] = WARP[i - 1], [a1, b1] = WARP[i]; return b0 + (b1 - b0) * (t - a0) / (a1 - a0); } return t; };
+// voice = ElevenLabs take 2; animation was choreographed on take 1 -> map video time onto choreography time
+window.frame = (t) => { const w = warp(t); window.renderAt(w); return drawOverlay(w).toDataURL('image/jpeg', 0.92); };
 window.DUR = DUR;
 await document.fonts.load('900 80px Inter'); await document.fonts.load('800 60px Inter');
 window.renderAt(1); window.READY = true;

@@ -1,4 +1,4 @@
-# Natural sound design (NO music) + Adam voice-over (ElevenLabs take 1) -> audio/final_mix.wav
+# Natural sound design (NO music) + Adam voice-over (ElevenLabs take 2) -> audio/final_mix.wav
 # Timeline matches src/scene.html (voice offset 1.0 s, duration 62.5 s).
 import numpy as np, subprocess, wave
 from scipy.signal import lfilter
@@ -13,9 +13,12 @@ def hp(x, a): return x - lp(x, a)
 def ramp(x, a, b): return np.clip((x - a) / (b - a), 0, 1)
 def env_ar(n, a, r):
     e = np.ones(n); A = max(1, int(a * SR)); R = max(1, int(r * SR)); e[:A] = np.linspace(0, 1, A); e[-R:] *= np.linspace(1, 0, R); return e
+WARP = [[0.0, 0.0], [4.0, 3.94], [5.9, 5.78], [10.86, 10.89], [17.08, 17.11], [18.56, 18.65], [23.29, 23.46], [24.0, 24.24], [26.9, 27.18], [28.87, 29.13], [29.94, 30.18], [31.92, 32.31], [32.71, 33.21], [34.05, 34.63], [36.82, 37.55], [37.99, 38.69], [40.66, 41.28], [43.84, 44.47], [48.39, 48.84], [49.44, 49.88], [53.09, 53.63], [54.13, 54.64], [56.1, 56.55], [59.36, 59.72], [62.5, 62.5]]
+def vt(x):  # choreography time -> video time (inverse warp; voice is take 2)
+    return float(np.interp(x, [b for a, b in WARP], [a for a, b in WARP]))
 L = np.zeros(N); R = np.zeros(N)
 def add(sig, at, gain=1.0, pan=0.0):
-    i = int(at * SR); n = min(len(sig), N - i)
+    i = int(vt(at) * SR); n = min(len(sig), N - i)
     if n <= 0 or i < 0: return
     L[i:i + n] += sig[:n] * gain * np.sqrt(.5 * (1 - pan)); R[i:i + n] += sig[:n] * gain * np.sqrt(.5 * (1 + pan))
 
@@ -35,7 +38,7 @@ def whoosh(dur, a0=.03, a1=.3):
     return out * np.sin(np.linspace(0, np.pi, n)) ** 1.5
 
 # ---------- shot-based space: inside gym vs street ----------
-outside = np.zeros(N); outside[int(3.94 * SR):int(5.78 * SR)] = 1; outside[int(48.84 * SR):int(53.63 * SR)] = 1
+outside = np.zeros(N); outside[int(vt(3.94) * SR):int(vt(5.78) * SR)] = 1; outside[int(vt(48.84) * SR):int(vt(53.63) * SR)] = 1
 k = int(.1 * SR); outside = np.convolve(outside, np.ones(k) / k, 'same'); inside = 1 - outside * .75
 
 # HVAC / room tone
@@ -80,7 +83,7 @@ for k2 in np.arange(44.4, 46.5, .27): add(step(True), k2, .3, .4); add(step(True
 st = hp(rng.standard_normal(int(.5 * SR)), .3) * env_ar(int(.5 * SR), .01, .1)
 add(np.sin(2 * np.pi * 1400 * np.arange(int(.08 * SR)) / SR) * .6, 46.6, .05); add(st, 46.7, .05)   # radio chirp + static
 # police: approach + two siren whoops + car door
-s0 = int(45.6 * SR); tt = t[s0:] - 45.6
+s0 = int(vt(45.6) * SR); tt = t[s0:] - vt(45.6)
 eng = (np.sin(2 * np.pi * 38 * tt) * .5 + lp(rng.standard_normal(len(tt)), .02) * 2.5) * np.clip(tt / 2.5, 0, 1) * (1 - ramp(t[s0:], 48.6, 50.0) * .7)
 E = np.zeros(N); E[s0:] = eng; add(E * (outside * .7 + .3), 0, .25, -.4)
 for a in (46.1, 47.4, 49.2):
