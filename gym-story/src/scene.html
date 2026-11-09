@@ -1,0 +1,614 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#000;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+// =====================================================================
+//  THE GYM SHOW-OFF — vertical 9:16 cinematic (fully procedural)
+// =====================================================================
+const QP = new URLSearchParams(location.search);
+const W = +(QP.get('w') || 1080), H = +(QP.get('h') || 1920);
+const OFF = 1.0, DUR = 62.5;
+
+const renderer = new THREE.WebGLRenderer({ antialias: false, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1); renderer.setSize(W, H);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.15;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+const glc = renderer.getContext(); const MAXPT = glc.getParameter(glc.ALIASED_POINT_SIZE_RANGE)[1];
+const scene = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(60, W / H, 0.03, 600);
+const envTex = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture;
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const ramp = (t, a, b) => clamp((t - a) / (b - a));
+const ease = t => { t = clamp(t); return t < .5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; };
+const eio = t => { t = clamp(t); return t * t * (3 - 2 * t); };
+const easeOut = t => 1 - Math.pow(1 - clamp(t), 3);
+const back = t => { t = clamp(t); const c = 1.70158, c3 = c + 1; return 1 + c3 * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const lv = (a, b, t) => a.clone().lerp(b, t);
+let seed = 23; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const wrapA = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+function canvasTex(w, h, draw, rep = [1, 1], srgb = true) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; const g = c.getContext('2d'); draw(g, w, h);
+  const t = new THREE.CanvasTexture(c); if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep[0], rep[1]); t.anisotropy = 8; return t;
+}
+function speckle(g, w, h, n, a, sz = 2, col) { for (let i = 0; i < n; i++) { g.fillStyle = col ? col(rnd()) : `rgba(${rnd() < .5 ? '0,0,0' : '255,255,255'},${rnd() * a})`; g.fillRect(rnd() * w, rnd() * h, 1 + rnd() * sz, 1 + rnd() * sz); } }
+function uvPlane(w, h, tile) { const g = new THREE.PlaneGeometry(w, h); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w / tile, uv.getY(i) * h / tile); return g; }
+
+// ---------- textures ----------
+const rubberTex = canvasTex(512, 512, (g, w, h) => {
+  g.fillStyle = '#18191b'; g.fillRect(0, 0, w, h);
+  speckle(g, w, h, 26000, 0, 2, r => r < .06 ? 'rgba(90,110,130,.6)' : r < .12 ? 'rgba(120,120,120,.35)' : 'rgba(0,0,0,.4)');
+  g.fillStyle = 'rgba(0,0,0,.8)'; g.fillRect(0, 0, w, 3); g.fillRect(0, 0, 3, h);
+});
+const concreteTex = canvasTex(512, 512, (g, w, h) => { g.fillStyle = '#3a3b3e'; g.fillRect(0, 0, w, h); speckle(g, w, h, 12000, .1, 3);
+  for (let i = 0; i < 25; i++) { g.fillStyle = `rgba(0,0,0,${rnd() * .08})`; g.beginPath(); g.arc(rnd() * w, rnd() * h, 20 + rnd() * 80, 0, 7); g.fill(); }
+  g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(0, 0, w, 2); });
+const plankTex = canvasTex(512, 512, (g, w, h) => { const n = 6, ph = h / n; for (let i = 0; i < n; i++) { const b = 120 + rnd() * 30 | 0; g.fillStyle = `rgb(${b + 40},${b + 10},${b - 30})`; g.fillRect(0, i * ph, w, ph);
+  for (let k = 0; k < 40; k++) { g.strokeStyle = `rgba(60,30,5,${rnd() * .25})`; g.beginPath(); const y = i * ph + rnd() * ph; g.moveTo(0, y); g.bezierCurveTo(w * .3, y + 3, w * .6, y - 3, w, y); g.stroke(); }
+  g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, i * ph, w, 2); } });
+const asphaltTex = canvasTex(512, 512, (g, w, h) => { g.fillStyle = '#232427'; g.fillRect(0, 0, w, h); speckle(g, w, h, 30000, .25, 2); });
+function textTex(lines, { w = 1024, h = 256, bg = null, font = 'Inter', color = '#fff', glow = null, size = 140, weight = 900, ls = 0 }) {
+  return canvasTex(w, h, (g) => { if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); } g.textAlign = 'center'; g.textBaseline = 'middle';
+    lines.forEach((l, i) => { g.font = `${weight} ${l.size || size}px ${font}`; if (g.letterSpacing !== undefined) g.letterSpacing = `${l.ls ?? ls}px`; if (glow) { g.shadowColor = glow; g.shadowBlur = 30; } g.fillStyle = l.c || color; g.fillText(l.t, w / 2, l.y ?? h / 2); g.shadowBlur = 0; g.fillText(l.t, w / 2, l.y ?? h / 2); }); });
+}
+const dotTex = canvasTex(64, 64, (g) => { const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.5)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); }, [1, 1], false);
+dotTex.wrapS = dotTex.wrapT = THREE.ClampToEdgeWrapping;
+
+const M = {
+  rubber: new THREE.MeshStandardMaterial({ map: rubberTex, roughness: .9 }),
+  concrete: new THREE.MeshStandardMaterial({ map: concreteTex, roughness: .92 }),
+  plank: new THREE.MeshStandardMaterial({ map: plankTex, roughness: .6 }),
+  ceil: new THREE.MeshStandardMaterial({ color: '#141518', roughness: .9 }),
+  steel: new THREE.MeshStandardMaterial({ color: '#202226', roughness: .35, metalness: .85, envMap: envTex, envMapIntensity: .8 }),
+  chrome: new THREE.MeshStandardMaterial({ color: '#c9ccd2', roughness: .15, metalness: 1, envMap: envTex, envMapIntensity: 1.2 }),
+  plate: new THREE.MeshStandardMaterial({ color: '#111214', roughness: .55, metalness: .3, envMap: envTex, envMapIntensity: .4 }),
+  plateRed: new THREE.MeshStandardMaterial({ color: '#8a1414', roughness: .45, metalness: .2, envMap: envTex, envMapIntensity: .4 }),
+  pad: new THREE.MeshStandardMaterial({ color: '#141416', roughness: .7 }),
+  mirror: new THREE.MeshStandardMaterial({ color: '#8d939c', roughness: .04, metalness: 1, envMap: envTex, envMapIntensity: 1.0 }),
+  glass: new THREE.MeshStandardMaterial({ color: '#0a1018', roughness: .05, metalness: .4, transparent: true, opacity: .22, envMap: envTex, envMapIntensity: .7, depthWrite: false }),
+  ledWhite: new THREE.MeshBasicMaterial({ color: '#f4f6ff' }),
+  neonBlue: new THREE.MeshBasicMaterial({ color: new THREE.Color(.25, .65, 2.2) }),
+  neonPink: new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, .25, 1.2) }),
+  black: new THREE.MeshStandardMaterial({ color: '#0b0b0d', roughness: .5 }),
+  desk: new THREE.MeshStandardMaterial({ color: '#1d1e22', roughness: .4, metalness: .3, envMap: envTex, envMapIntensity: .5 }),
+  asphalt: new THREE.MeshStandardMaterial({ map: asphaltTex, roughness: .85 }),
+  sidewalk: new THREE.MeshStandardMaterial({ color: '#55565a', roughness: .9 }),
+};
+function box(w, h, d, mat, x, y, z, parent = scene, cast = true) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; parent.add(m); return m; }
+function cyl(r, h, mat, x, y, z, parent = scene, seg = 20, rx = 0, rz = 0) { const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, seg), mat); m.position.set(x, y, z); m.rotation.set(rx, 0, rz); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; }
+
+// =====================================================================
+//  GYM  (interior x[-12,12] z[-10,10] h=6 ; glass storefront at z=10)
+// =====================================================================
+{
+  const fl = new THREE.Mesh(uvPlane(24, 20, 1), M.rubber); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; scene.add(fl);
+  const plat = new THREE.Mesh(uvPlane(3.2, 2.6, 1.3), M.plank); plat.rotation.x = -Math.PI / 2; plat.position.set(2.2, .025, -3.0); plat.receiveShadow = true; scene.add(plat);
+  box(3.3, .04, 2.7, M.pad, 2.2, .008, -3.0, scene, false);
+  box(24, .2, 20, M.ceil, 0, 6.1, 0, scene, false);
+  // walls
+  const wm = M.concrete;
+  const back = new THREE.Mesh(uvPlane(24, 6, 3), wm); back.position.set(0, 3, -10); back.receiveShadow = true; scene.add(back);
+  for (const s of [-1, 1]) { const w = new THREE.Mesh(uvPlane(20, 6, 3), wm); w.rotation.y = -s * Math.PI / 2; w.position.set(12 * s, 3, 0); w.receiveShadow = true; scene.add(w); }
+  // mirror wall section on back wall
+  box(12, 2.6, .04, M.mirror, -3, 1.6, -9.97, scene, false);
+  box(12.2, .08, .08, M.steel, -3, 2.94, -9.95, scene, false); box(12.2, .08, .08, M.steel, -3, .28, -9.95, scene, false);
+  // neon strips along back wall top + left wall
+  box(22, .05, .05, M.neonBlue, 0, 5.2, -9.95, scene, false); box(.05, .05, 18, M.neonPink, -11.95, 4.6, 0, scene, false);
+  // big neon logo on back wall
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(7, 1.75), new THREE.MeshBasicMaterial({ map: textTex([{ t: 'IRON PULSE', y: 128 }], { w: 1024, h: 256, color: '#ff4fd0', glow: '#ff2fb0', size: 150, ls: 14 }), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  logo.position.set(-3, 4.1, -9.9); scene.add(logo);
+  // wall posters / slogans
+  const poster = (txt, x, z, ry, c = '#ffffff') => { const p = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.0), new THREE.MeshStandardMaterial({ map: textTex([{ t: txt, y: 128 }], { w: 1024, h: 320, bg: '#121316', color: c, size: 110, ls: 6 }), roughness: .8 })); p.position.set(x, 3.6, z); p.rotation.y = ry; scene.add(p); };
+  poster('NO EXCUSES', 11.95, -4, -Math.PI / 2, '#3fb4ff'); poster('RESPECT THE SPACE', -11.95, -6.5, Math.PI / 2, '#ffffff');
+  // ceiling ducts & beams
+  for (const z of [-7, -2, 3, 8]) box(24, .35, .25, M.steel, 0, 5.75, z, scene, false);
+  cyl(.38, 24, M.chrome, 0, 5.4, -4.5, scene, 20, 0, Math.PI / 2); cyl(.32, 24, M.chrome, 0, 5.45, 4.5, scene, 20, 0, Math.PI / 2);
+  // LED linear lights
+  for (const x of [-8, -3, 2, 7]) for (const z of [-6, -1, 4]) box(2.6, .05, .16, M.ledWhite, x, 5.55, z, scene, false);
+  // pillars
+  for (const [x, z] of [[-6, -1.5], [5, 1.5]]) { box(.6, 6, .6, M.concrete, x, 3, z); box(.62, .05, .62, M.neonBlue, x, 2.2, z, scene, false); }
+}
+// glass storefront & doors (z=10)
+const doorL = new THREE.Group(), doorR = new THREE.Group(); scene.add(doorL, doorR);
+{
+  box(24, 2.8, .25, M.concrete, 0, 4.6, 10.0); // header above glass
+  for (let x = -12; x <= 12; x += 2.4) if (Math.abs(x - 8) > .7) box(.08, 3.2, .12, M.steel, x, 1.6, 10);
+  box(24, .08, .12, M.steel, 0, 3.2, 10, scene, false); box(24, .1, .12, M.steel, 0, .05, 10, scene, false);
+  for (let x = -12; x < 12; x += 2.4) { if (x + 1.2 > 6.8 && x + 1.2 < 9.2) continue; const g = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.2), M.glass); g.position.set(x + 1.2, 1.6, 10); g.renderOrder = 3; scene.add(g); }
+  for (const [grp, dx] of [[doorL, -1], [doorR, 1]]) { const g = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 3.1), M.glass); g.renderOrder = 3; grp.add(g); box(1.2, .06, .06, M.steel, 0, 1.53, 0, grp, false); box(.06, 3.1, .06, M.steel, dx * .58, 0, 0, grp, false); grp.position.set(8 + dx * .6, 1.6, 10.03); }
+  // exterior sign
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.1), new THREE.MeshBasicMaterial({ map: textTex([{ t: 'IRON PULSE FITNESS', y: 128 }], { w: 1024, h: 256, color: '#ffffff', glow: '#4fb0ff', size: 96, ls: 8 }), transparent: true }));
+  sign.position.set(5, 4.6, 10.14); scene.add(sign);
+  // outside
+  const sw = new THREE.Mesh(new THREE.PlaneGeometry(80, 4), M.sidewalk); sw.rotation.x = -Math.PI / 2; sw.position.set(0, .01, 12.1); sw.receiveShadow = true; scene.add(sw);
+  const rd = new THREE.Mesh(uvPlane(80, 9, 4), M.asphalt); rd.rotation.x = -Math.PI / 2; rd.position.set(0, .005, 18.6); rd.receiveShadow = true; scene.add(rd);
+  for (let x = -40; x < 40; x += 5) { const d = new THREE.Mesh(new THREE.PlaneGeometry(2.4, .14), new THREE.MeshBasicMaterial({ color: '#8a7a3a' })); d.rotation.x = -Math.PI / 2; d.position.set(x, .012, 18.6); scene.add(d); }
+  box(80, .15, .25, M.sidewalk, 0, .07, 14.1, scene, false);
+  cyl(.07, 6, M.steel, 1, 3, 13.4); box(1.0, .08, .08, M.steel, 1.4, 5.95, 13.4); const bulb = new THREE.Mesh(new THREE.SphereGeometry(.15, 12, 8), new THREE.MeshBasicMaterial({ color: '#ffd9a8' })); bulb.position.set(1.9, 5.85, 13.4); scene.add(bulb);
+  // buildings across the street
+  for (let i = 0; i < 6; i++) { const w = 7 + rnd() * 5, hh = 7 + rnd() * 12; const b = box(w, hh, 6, new THREE.MeshStandardMaterial({ color: '#202228', roughness: .9 }), -25 + i * 10, hh / 2, 28, scene, false);
+    for (let k = 0; k < 10; k++) { if (rnd() < .5) continue; const wn = new THREE.Mesh(new THREE.PlaneGeometry(.9, 1.1), new THREE.MeshBasicMaterial({ color: rnd() < .5 ? '#ffcf8a' : '#9fc7ff' })); wn.position.set(-25 + i * 10 + (rnd() - .5) * (w - 1.5), 2 + rnd() * (hh - 3), 24.98); wn.rotation.y = Math.PI; scene.add(wn); } }
+  // night sky backdrop
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(300, 120), new THREE.MeshBasicMaterial({ color: '#05070d' })); sky.position.set(0, 40, 60); sky.rotation.y = Math.PI; scene.add(sky);
+}
+// front desk
+{
+  box(3.4, 1.1, .8, M.desk, 9.2, .55, 6.2); box(3.5, .06, .9, M.chrome, 9.2, 1.13, 6.2, scene, false);
+  box(3.4, .04, .02, M.neonBlue, 9.2, .2, 5.79, scene, false);
+  const mon = box(.6, .38, .04, M.black, 9.6, 1.45, 6.4); mon.rotation.y = Math.PI - .3;
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(.55, .33), new THREE.MeshBasicMaterial({ color: '#2a6cff' })); scr.position.set(9.6, 1.45, 6.37); scr.rotation.y = Math.PI - .3; scene.add(scr);
+}
+// ---------- equipment ----------
+function plateMesh(r, th, mat) { const g = new THREE.Group(); const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r, th, 32), mat); p.rotation.z = Math.PI / 2; p.castShadow = true; g.add(p); const hub = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, th + .02, 16), M.chrome); hub.rotation.z = Math.PI / 2; g.add(hub); return g; }
+function barbell(plates) { // along local x
+  const g = new THREE.Group(); const bar = new THREE.Mesh(new THREE.CylinderGeometry(.016, .016, 2.2, 10), M.chrome); bar.rotation.z = Math.PI / 2; bar.castShadow = true; g.add(bar);
+  for (const s of [-1, 1]) { const sl = new THREE.Mesh(new THREE.CylinderGeometry(.026, .026, .42, 12), M.chrome); sl.rotation.z = Math.PI / 2; sl.position.x = s * .88; g.add(sl);
+    plates.forEach((p, i) => { const m = plateMesh(p[0], p[1], p[2]); m.position.x = s * (.7 + i * .075); g.add(m); }); }
+  scene.add(g); return g;
+}
+const heavy = [[.225, .065, M.plateRed], [.225, .065, M.plateRed], [.225, .065, M.plate], [.2, .05, M.plate]];
+const bigBar = barbell(heavy); // guy's deadlift bar
+const benchBar = barbell([[.2, .05, M.plate]]);
+// power rack
+{ const x = 6.5, z = -6.5; for (const [dx, dz] of [[-.65, -.6], [.65, -.6], [-.65, .6], [.65, .6]]) box(.08, 2.6, .08, M.steel, x + dx, 1.3, z + dz); box(1.4, .08, .08, M.steel, x, 2.6, z - .6); box(1.4, .08, .08, M.steel, x, 2.6, z + .6); }
+// benches
+function bench(x, z, ry) { const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g); const pad = new THREE.Mesh(new RoundedBoxGeometry(.32, .1, 1.25, 2, .04), M.pad); pad.position.y = .45; pad.castShadow = true; g.add(pad); box(.08, .4, .08, M.steel, 0, .2, -.5, g); box(.08, .4, .08, M.steel, 0, .2, .5, g); box(.5, .05, .1, M.steel, 0, .02, -.5, g); box(.5, .05, .1, M.steel, 0, .02, .5, g); return g; }
+bench(6.5, -6.5, 0); bench(-1.0, 3.2, .3);
+// dumbbell rack along mirror
+const dumbbellGeo = (() => { const g = new THREE.Group(); return g; })();
+function dumbbell(scale = 1) { const g = new THREE.Group(); const h = new THREE.Mesh(new THREE.CylinderGeometry(.016, .016, .2, 8), M.chrome); h.rotation.z = Math.PI / 2; g.add(h);
+  for (const s of [-1, 1]) { const hd = new THREE.Mesh(new THREE.CylinderGeometry(.05 * scale, .05 * scale, .07 * scale, 6), M.plate); hd.rotation.z = Math.PI / 2; hd.position.x = s * (.1 + .035 * scale); hd.castShadow = true; g.add(hd); } return g; }
+{ const rx = -4.5, rz = -9.2; for (let t = 0; t < 2; t++) { box(5, .05, .4, M.steel, rx, .55 + t * .35, rz + t * .1, scene, false); for (let i = 0; i < 10; i++) { const d = dumbbell(.9 + i * .08); d.rotation.y = Math.PI / 2; d.position.set(rx - 2.2 + i * .48, .62 + t * .35, rz + t * .1); scene.add(d); } }
+  for (const dx of [-2.4, 2.4]) box(.06, .9, .5, M.steel, rx + dx, .45, rz + .05); }
+// cable machine
+const CABLE = V(-9.6, 0, -.6);
+const stackTop = new THREE.Group(); scene.add(stackTop);
+{ const x = CABLE.x, z = CABLE.z; box(.1, 2.4, .1, M.steel, x, 1.2, z - .4); box(.1, 2.4, .1, M.steel, x, 1.2, z + .4); box(.1, .1, .9, M.steel, x, 2.4, z); box(.6, .1, .9, M.steel, x - .2, .05, z);
+  for (let i = 0; i < 12; i++) box(.18, .055, .32, i % 2 ? M.plate : M.plateRed, x - .05, .2 + i * .06, z, scene, false);
+  box(.2, .05, .34, M.chrome, x - .05, .95, z, stackTop, false);
+  const pul = cyl(.06, .04, M.chrome, x + .1, 1.75, z, scene, 16, 0, Math.PI / 2); }
+const cableRope = new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, 1, 6), M.black); cableRope.geometry.translate(0, .5, 0); scene.add(cableRope);
+// treadmills along left wall
+for (const z of [-5, -3.6, -2.2]) { const g = new THREE.Group(); g.position.set(-10.2, 0, z); scene.add(g); box(1.7, .18, .7, M.pad, 0, .12, 0, g); box(1.5, .02, .5, M.black, 0, .22, 0, g, false); box(.08, 1.2, .08, M.steel, -.8, .7, -.32, g); box(.08, 1.2, .08, M.steel, -.8, .7, .32, g);
+  const con = box(.15, .35, .7, M.desk, -.85, 1.35, 0, g); const sc = new THREE.Mesh(new THREE.PlaneGeometry(.3, .2), new THREE.MeshBasicMaterial({ color: '#3fb4ff' })); sc.rotation.y = Math.PI / 2; sc.position.set(-.77, 1.38, 0); g.add(sc); }
+// kettlebells & plate tree, mats
+for (let i = 0; i < 6; i++) { const k = new THREE.Mesh(new THREE.SphereGeometry(.12 + i * .01, 16, 12), M.plate); k.position.set(9.5 - i * .45, .13 + i * .01, -9.4); k.castShadow = true; scene.add(k); const hd = new THREE.Mesh(new THREE.TorusGeometry(.07, .015, 8, 16, Math.PI), M.plate); hd.position.set(9.5 - i * .45, .26 + i * .02, -9.4); scene.add(hd); }
+for (let i = 0; i < 4; i++) { const m = box(1.8, .03, .7, new THREE.MeshStandardMaterial({ color: ['#2a4b6b', '#4b2a5b', '#2a5b4b', '#5b4a2a'][i], roughness: .9 }), 8.4, .016, -2.2 + i * .9, scene, false); }
+
+// =====================================================================
+//  CHARACTERS
+// =====================================================================
+function makePerson(o) {
+  const { shirt, pants, skin = '#c08a68', hair = '#22160f', female = false, bulk = 1, sleeveless = false, shorts = false, cap = null, backText = null, shoes = '#e8e8e8', headphones = false, scale = .93 } = o;
+  const mS = new THREE.MeshStandardMaterial({ color: shirt, roughness: .8 }), mP = new THREE.MeshStandardMaterial({ color: pants, roughness: .85 });
+  const mK = new THREE.MeshStandardMaterial({ color: skin, roughness: .55 }), mH = new THREE.MeshStandardMaterial({ color: hair, roughness: .85 }), mE = new THREE.MeshStandardMaterial({ color: '#0d0a08', roughness: .3 });
+  const add = (parent, geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; parent.add(m); return m; };
+  const root = new THREE.Group(); root.scale.setScalar(scale); root.rotation.order = 'YXZ'; scene.add(root);
+  const J = {};
+  J.spine = new THREE.Group(); J.spine.position.y = .05; root.add(J.spine);
+  add(root, new THREE.CapsuleGeometry(.15, .12, 4, 12), mP, 0, 0, 0).scale.set(female ? 1.32 : 1.22, 1, .85);
+  const tw = female ? 1.1 : 1.28 * bulk;
+  const torso = add(J.spine, new THREE.CapsuleGeometry(.155, .34, 4, 16), mS, 0, .3, 0); torso.scale.set(tw, 1, female ? .78 : .8 * Math.sqrt(bulk));
+  if (female) add(J.spine, new THREE.SphereGeometry(.13, 16, 12), mS, 0, .1, .015).scale.set(1.15, .8, .8);
+  if (bulk > 1.05) { for (const s of [-1, 1]) add(J.spine, new THREE.SphereGeometry(.1, 14, 10), mS, s * .09, .43, .07).scale.set(1.1, .8, .6); }
+  if (backText) { const bt = new THREE.Mesh(new THREE.PlaneGeometry(.34, .1), new THREE.MeshBasicMaterial({ map: textTex([{ t: backText, y: 64 }], { w: 512, h: 128, color: '#f2f2f2', size: 80, ls: 6 }), transparent: true })); bt.position.set(0, .45, -.135); bt.rotation.y = Math.PI; J.spine.add(bt); }
+  J.neck = new THREE.Group(); J.neck.position.y = .6; J.spine.add(J.neck);
+  add(J.neck, new THREE.CylinderGeometry(female ? .045 : .055 * bulk, .055, .1, 10), mK, 0, .03, 0);
+  const head = add(J.neck, new THREE.SphereGeometry(.112, 24, 18), mK, 0, .17, .01); head.scale.set(.9, 1.12, 1.02);
+  add(J.neck, new THREE.SphereGeometry(.04, 8, 6), mK, 0, .155, .112).scale.set(.45, .7, .55);
+  for (const s of [-1, 1]) { add(J.neck, new THREE.SphereGeometry(.014, 8, 6), mE, s * .038, .19, .1); add(J.neck, new THREE.BoxGeometry(.04, .008, .012), mH, s * .04, .218, .1); add(J.neck, new THREE.SphereGeometry(.028, 8, 6), mK, s * .1, .16, 0).scale.set(.5, 1, .8); }
+  add(J.neck, new THREE.BoxGeometry(.045, .01, .01), new THREE.MeshStandardMaterial({ color: '#7a3a34' }), 0, .105, .104);
+  if (cap) { add(J.neck, new THREE.SphereGeometry(.122, 20, 12, 0, 6.283, 0, 1.6), new THREE.MeshStandardMaterial({ color: cap, roughness: .6 }), 0, .2, 0); add(J.neck, new THREE.BoxGeometry(.18, .015, .12), new THREE.MeshStandardMaterial({ color: cap }), 0, .21, .12); }
+  else { const hr = add(J.neck, new THREE.SphereGeometry(.12, 20, 12, 0, 6.283, 0, female ? 1.9 : 1.6), mH, 0, .19, -.008); hr.scale.set(.97, 1.05, 1.07);
+    if (female) { const pt = add(J.neck, new THREE.CapsuleGeometry(.04, .2, 4, 10), mH, 0, .14, -.15); pt.rotation.x = .35; add(J.neck, new THREE.SphereGeometry(.05, 10, 8), mH, 0, .25, -.11); } }
+  if (headphones) { const hp = add(J.neck, new THREE.TorusGeometry(.13, .012, 8, 24, Math.PI), M.black, 0, .19, 0); hp.rotation.z = 0; for (const s of [-1, 1]) add(J.neck, new THREE.CylinderGeometry(.04, .04, .03, 16), new THREE.MeshStandardMaterial({ color: '#e6e6e6', roughness: .4 }), s * .118, .17, 0).rotation.z = Math.PI / 2; }
+  J.head = head;
+  const ar = female ? .042 : .05 * bulk;
+  for (const s of [1, -1]) {
+    const sh = new THREE.Group(); sh.position.set(s * (female ? .19 : .22 * Math.sqrt(bulk)), .52, 0); J.spine.add(sh);
+    add(sh, new THREE.SphereGeometry(ar + .015, 12, 8), sleeveless ? mK : mS, 0, 0, 0).scale.set(1.15, 1, 1);
+    const ua = add(sh, new THREE.CapsuleGeometry(ar, .2, 4, 10), sleeveless ? mK : mS, 0, -.14, 0); if (bulk > 1.05) ua.scale.set(1.15, 1, 1.1);
+    const el = new THREE.Group(); el.position.y = -.29; sh.add(el);
+    add(el, new THREE.CapsuleGeometry(ar * .88, .19, 4, 10), mK, 0, -.12, 0);
+    const hand = new THREE.Group(); hand.position.y = -.26; el.add(hand);
+    add(hand, new RoundedBoxGeometry(.065, .095, .033, 2, .014), mK, 0, -.03, 0);
+    const k = s > 0 ? 'L' : 'R'; J['sh' + k] = sh; J['el' + k] = el; J['hand' + k] = hand;
+    const hip = new THREE.Group(); hip.position.set(s * (female ? .1 : .095), -.02, 0); root.add(hip);
+    add(hip, new THREE.CapsuleGeometry(female ? .08 : .074 * Math.sqrt(bulk), .3, 4, 10), mP, 0, -.21, 0);
+    const kn = new THREE.Group(); kn.position.y = -.44; hip.add(kn);
+    add(kn, new THREE.CapsuleGeometry(.058, .32, 4, 10), shorts ? mK : mP, 0, -.21, 0);
+    add(kn, new RoundedBoxGeometry(.1, .08, .26, 2, .025), new THREE.MeshStandardMaterial({ color: shoes, roughness: .6 }), 0, -.455, .06);
+    J['hip' + k] = hip; J['kn' + k] = kn;
+  }
+  return { root, J, scale };
+}
+const JN = ['spine', 'neck', 'shL', 'elL', 'shR', 'elR', 'hipL', 'knL', 'hipR', 'knR'];
+function setPose(p, pose) { for (const j of JN) { const a = pose[j] || [0, 0, 0]; p.J[j].rotation.set(a[0], a[1], a[2]); } }
+function mixPose(a, b, t) { const o = {}; for (const j of JN) { const x = a[j] || [0, 0, 0], y = b[j] || [0, 0, 0]; o[j] = [lerp(x[0], y[0], t), lerp(x[1], y[1], t), lerp(x[2], y[2], t)]; } return o; }
+const P = {
+  stand: { shL: [0, 0, .12], shR: [0, 0, -.12], elL: [-.15, 0, 0], elR: [-.15, 0, 0] },
+  flex: { spine: [-.05, 0, 0], shL: [-.1, 0, 1.5], shR: [-.1, 0, -1.5], elL: [0, 0, 1.75], elR: [0, 0, -1.75] },
+  hips: { shL: [.1, 0, .5], shR: [.1, 0, -.5], elL: [-1.5, -.6, 0], elR: [-1.5, .6, 0] },
+  cross: { shL: [-.55, .3, .2], shR: [-.55, -.3, -.2], elL: [-1.75, .9, 0], elR: [-1.75, -.9, 0] },
+  handsUp: { shL: [-2.7, 0, .35], shR: [-2.7, 0, -.35], elL: [-.7, 0, 0], elR: [-.7, 0, 0] },
+  phone: { neck: [.35, 0, 0], shR: [-.95, .25, -.1], elR: [-1.35, 0, 0], shL: [-.3, 0, .15], elL: [-1.2, 0, 0] },
+  phoneEar: { shR: [-.4, 0, -.75], elR: [-2.5, 0, 0], shL: [-.2, 0, .3], elL: [-1.4, .5, 0] },
+  radio: { shL: [-.4, 0, .75], elL: [-2.5, 0, 0], shR: [0, 0, -.12] },
+  stop: { spine: [.05, 0, 0], shR: [-1.45, -.2, 0], elR: [-.15, 0, 0], shL: [-.6, 0, .1], elL: [-.6, 0, 0] },
+};
+function walkPose(ph, amt = 1, armAmt = 1) {
+  const s = Math.sin(ph), c = Math.cos(ph);
+  return { spine: [.05 * amt, 0, 0], hipL: [-.45 * s * amt, 0, 0], hipR: [.45 * s * amt, 0, 0], knL: [Math.max(0, .75 * c) * amt + .05, 0, 0], knR: [Math.max(0, -.75 * c) * amt + .05, 0, 0],
+    shL: [.38 * s * amt * armAmt, 0, .1], shR: [-.38 * s * amt * armAmt, 0, -.1], elL: [-.3, 0, 0], elR: [-.3, 0, 0] };
+}
+function runPose(ph) { const s = Math.sin(ph), c = Math.cos(ph); return { spine: [.15, 0, 0], hipL: [-.75 * s, 0, 0], hipR: [.75 * s, 0, 0], knL: [.4 + .9 * Math.max(0, c), 0, 0], knR: [.4 + .9 * Math.max(0, -c), 0, 0], shL: [.6 * s, 0, .1], shR: [-.6 * s, 0, -.1], elL: [-1.5, 0, 0], elR: [-1.5, 0, 0] }; }
+function curlPose(ph, base = P.stand) { const k = .5 - .5 * Math.cos(ph); return { ...base, shL: [-.1, 0, .1], shR: [-.1, 0, -.1], elL: [-.2 - 1.9 * k, 0, 0], elR: [-.2 - 1.9 * (.5 - .5 * Math.cos(ph + Math.PI)), 0, 0] }; }
+function talkPose(t, base = P.stand) { return { ...base, shR: [-.45 + .12 * Math.sin(t * 3.1), .2, -.15], elR: [-1.3 + .35 * Math.sin(t * 4.3), 0, 0], shL: [-.15, 0, .2 + .1 * Math.sin(t * 2.3)], elL: [-.6 + .2 * Math.sin(t * 3.7), 0, 0], neck: [0, 0, .08 * Math.sin(t * 2.7)] }; }
+function lookAtNeck(p, tx, tz, k = 1, pitch = 0) { const yaw = wrapA(Math.atan2(tx - p.root.position.x, tz - p.root.position.z) - p.root.rotation.y); p.J.neck.rotation.y = clamp(yaw, -1.2, 1.2) * k; p.J.neck.rotation.x += pitch; }
+const faceDir = (fx, fz, tx, tz) => Math.atan2(tx - fx, tz - fz);
+function place(p, x, z, ry, pose, y = null) { p.root.visible = true; p.root.position.set(x, y ?? .955 * p.scale, z); p.root.rotation.set(0, ry, 0); setPose(p, pose); }
+
+const guy = makePerson({ shirt: '#1d1f24', pants: '#2c2f38', skin: '#b98063', hair: '#120d0a', bulk: 1.28, sleeveless: true, shorts: true, shoes: '#d43b2a' });
+const girl = makePerson({ shirt: '#17a3a8', pants: '#15161a', skin: '#d6a07e', hair: '#3b2416', female: true, headphones: true, shoes: '#f2f2f2', scale: .88 });
+const sec1 = makePerson({ shirt: '#0c0c0e', pants: '#15161a', skin: '#8a5a3c', hair: '#0a0808', bulk: 1.15, backText: 'SECURITY', shoes: '#0b0b0b' });
+const sec2 = makePerson({ shirt: '#0c0c0e', pants: '#15161a', skin: '#c9946e', hair: '#2a1c12', bulk: 1.1, backText: 'SECURITY', shoes: '#0b0b0b' });
+const cop = makePerson({ shirt: '#18233d', pants: '#141a2a', skin: '#a8704f', cap: '#141a2a', backText: 'POLICE', shoes: '#0b0b0b' });
+const staff = makePerson({ shirt: '#2a6cff', pants: '#1a1a1d', skin: '#c8906a', hair: '#1a120c', female: true, scale: .86 });
+const runner = makePerson({ shirt: '#8a2a3a', pants: '#1d1d22', skin: '#a8714e', hair: '#0e0a08', shorts: true });
+const presser = makePerson({ shirt: '#4a5a3a', pants: '#2a2a30', skin: '#c99878', hair: '#5a3a1a', bulk: 1.1 });
+const stretcher = makePerson({ shirt: '#e0a020', pants: '#202024', skin: '#7a4e34', hair: '#0e0a08', female: true, scale: .87 });
+// props in hands
+const dbL = dumbbell(.85), dbR = dumbbell(.85); girl.J.handL.add(dbL); girl.J.handR.add(dbR); dbL.position.y = -.05; dbR.position.y = -.05; dbL.rotation.y = Math.PI / 2; dbR.rotation.y = Math.PI / 2;
+const phoneCan = document.createElement('canvas'); phoneCan.width = 360; phoneCan.height = 760; const phoneTex = new THREE.CanvasTexture(phoneCan); phoneTex.colorSpace = THREE.SRGBColorSpace;
+const phone = new THREE.Group(); girl.J.handR.add(phone); phone.position.set(0, -.07, .025);
+{ phone.add(new THREE.Mesh(new RoundedBoxGeometry(.075, .155, .009, 3, .006), M.black)); const s = new THREE.Mesh(new THREE.PlaneGeometry(.068, .146), new THREE.MeshBasicMaterial({ map: phoneTex, color: '#9a9a9a' })); s.position.z = .0051; phone.add(s); }
+function drawPhone(sec, mode) {
+  const g = phoneCan.getContext('2d'), w = 360, h = 760; const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#10233f'); gr.addColorStop(1, '#07080d'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.textAlign = 'center';
+  if (mode === 'call') {
+    g.fillStyle = '#9fc4ff'; g.font = '700 26px Inter'; g.fillText('CALLING', w / 2, 130); g.fillStyle = '#fff'; g.font = '900 54px Inter'; g.fillText('GYM', w / 2, 220); g.fillText('SECURITY', w / 2, 280);
+    g.font = '500 28px Inter'; g.fillStyle = '#9fe08a'; g.fillText(sec > 1.0 ? 'Connected  00:0' + Math.floor(sec - 1) : 'Calling…', w / 2, 335);
+    g.fillStyle = '#e8261c'; g.beginPath(); g.arc(w / 2, 640, 50, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = 10; g.lineCap = 'round'; g.beginPath(); g.moveTo(w / 2 - 24, 645); g.lineTo(w / 2 + 24, 645); g.stroke();
+  } else {
+    g.fillStyle = '#fff'; g.font = '300 96px Inter'; g.fillText('9:42', w / 2, 170); g.font = '600 26px Inter'; g.fillStyle = '#bcd'; g.fillText('Front desk · Security', w / 2, 230);
+    g.fillStyle = 'rgba(255,255,255,.1)'; g.beginPath(); g.roundRect(30, 300, 300, 110, 22); g.fill(); g.fillStyle = '#fff'; g.font = '700 28px Inter'; g.fillText('📞  Gym Security', w / 2, 368);
+  }
+  phoneTex.needsUpdate = true;
+}
+const radio = new THREE.Mesh(new RoundedBoxGeometry(.05, .14, .03, 2, .01), M.black); sec2.J.handL.add(radio); radio.position.y = -.06;
+
+// police car (outside, faces +x)
+const car = new THREE.Group(); scene.add(car);
+const lightBar = [];
+{
+  const body = new THREE.MeshStandardMaterial({ color: '#e9ecf0', roughness: .3, metalness: .5, envMap: envTex, envMapIntensity: .8 }), blk = new THREE.MeshStandardMaterial({ color: '#0d0e12', roughness: .3, metalness: .5, envMap: envTex });
+  const lo = new THREE.Mesh(new RoundedBoxGeometry(4.8, .7, 1.9, 3, .15), blk); lo.position.y = .62; car.add(lo);
+  const mid = new THREE.Mesh(new RoundedBoxGeometry(2.4, .6, 1.84, 3, .12), body); mid.position.set(-.1, 1.12, 0); car.add(mid);
+  for (const s of [-1, 1]) { const dr = new THREE.Mesh(new THREE.PlaneGeometry(2.2, .5), body); dr.position.set(-.1, .72, s * .96); if (s < 0) dr.rotation.y = Math.PI; car.add(dr);
+    const txt = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .32), new THREE.MeshBasicMaterial({ map: textTex([{ t: 'POLICE', y: 64 }], { w: 512, h: 128, color: '#0e1a40', size: 96, ls: 10 }), transparent: true })); txt.position.set(-.1, .72, s * .965); if (s < 0) txt.rotation.y = Math.PI; car.add(txt); }
+  for (const [x, s] of [[1.5, -1], [1.5, 1], [-1.5, -1], [-1.5, 1]]) { const w = new THREE.Mesh(new THREE.CylinderGeometry(.36, .36, .25, 20), M.black); w.rotation.x = Math.PI / 2; w.position.set(x, .36, s * .9); car.add(w); }
+  for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.2, .1, .22), new THREE.MeshBasicMaterial({ color: i < 3 ? '#ff1010' : '#1030ff' })); m.position.set(-.1, 1.48, -.6 + i * .24); m.userData.red = i < 3; car.add(m); lightBar.push(m); }
+  for (const s of [-1, 1]) { const hl = new THREE.Mesh(new THREE.CircleGeometry(.11, 16), new THREE.MeshBasicMaterial({ color: '#fff6dd' })); hl.rotation.y = Math.PI / 2; hl.position.set(2.41, .7, s * .7); car.add(hl); }
+}
+const polR = new THREE.PointLight('#ff1a1a', 0, 26, 1.4), polB = new THREE.PointLight('#2040ff', 0, 26, 1.4); car.add(polR, polB); polR.position.set(-.1, 2.2, -.8); polB.position.set(-.1, 2.2, .8);
+
+// =====================================================================
+//  LIGHTS
+// =====================================================================
+const hemi = new THREE.HemisphereLight('#6f7f9f', '#1a1a1e', .8); scene.add(hemi);
+const spots = [];
+for (const [x, z, sh] of [[-3, -6, true], [2.2, -2.5, true], [-8, 0, false], [7, -5, false], [8, 5, false], [-2, 4, false], [-6.2, -3.6, false]]) {
+  const s = new THREE.SpotLight('#ffeedd', 55, 18, .75, .7, 1.3); s.position.set(x, 5.5, z); s.target.position.set(x, 0, z); scene.add(s, s.target);
+  if (sh) { s.castShadow = true; s.shadow.mapSize.set(1024, 1024); s.shadow.bias = -.0008; } spots.push(s);
+}
+const neonL1 = new THREE.PointLight('#3f7bff', 8, 14, 1.6); neonL1.position.set(-3, 4.8, -9.2); scene.add(neonL1);
+const neonL2 = new THREE.PointLight('#ff3fb5', 7, 14, 1.6); neonL2.position.set(-11.2, 4.0, -1); scene.add(neonL2);
+const street = new THREE.PointLight('#ffcf9a', 14, 22, 1.5); street.position.set(1.9, 5.6, 13.4); scene.add(street);
+const doorLight = new THREE.PointLight('#ffd2a0', 10, 9, 1.6); doorLight.position.set(8, 3.6, 11.6); scene.add(doorLight);
+const entryL = new THREE.PointLight('#cfd8ff', 9, 7, 1.6); entryL.position.set(7.2, 2.4, 8.6); scene.add(entryL);
+const deskL = new THREE.PointLight('#5a8cff', 3, 5, 2); deskL.position.set(9.4, 1.8, 6.0); scene.add(deskL);
+
+// dust motes in light + volumetric cones
+const dustMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, uniforms: { uT: { value: 0 }, uScale: { value: 1000 }, uTex: { value: dotTex } },
+  vertexShader: `attribute vec4 aS; uniform float uT,uScale; varying float vA; void main(){ vec3 p=position; p.x+=sin(uT*.2+aS.x*30.)*.4; p.y=mod(p.y+uT*.05*aS.y,5.5); p.z+=cos(uT*.17+aS.z*30.)*.4; vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min(.011*uScale/max(-mv.z,.1),10.); vA=(.2+.6*aS.w)*smoothstep(1.,3.,-mv.z); }`,
+  fragmentShader: `uniform sampler2D uTex; varying float vA; void main(){ gl_FragColor=vec4(vec3(1.,.95,.85)*texture2D(uTex,gl_PointCoord).r*vA*.5,1.); }` });
+{ const n = 1500, p = new Float32Array(n * 3), s = new Float32Array(n * 4); for (let i = 0; i < n; i++) { p.set([(rnd() - .5) * 22, rnd() * 5.5, (rnd() - .5) * 18], i * 3); s.set([rnd(), rnd(), rnd(), rnd()], i * 4); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3)); g.setAttribute('aS', new THREE.BufferAttribute(s, 4)); const d = new THREE.Points(g, dustMat); d.frustumCulled = false; scene.add(d); }
+const coneMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, uniforms: { uI: { value: .55 } },
+  vertexShader: `varying float vY; varying vec3 vN; varying vec3 vV; void main(){ vY=position.y; vec4 mv=modelViewMatrix*vec4(position,1.); vV=normalize(-mv.xyz); vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader: `uniform float uI; varying float vY; varying vec3 vN; varying vec3 vV; void main(){ float f=pow(abs(dot(vN,vV)),2.); float h=clamp(vY/5.4+1.,0.,1.); gl_FragColor=vec4(vec3(1.,.93,.82)*uI*f*h*.16,1.); }` });
+for (const s of spots) { const g = new THREE.ConeGeometry(2.4, 5.4, 32, 1, true); g.translate(0, -2.7, 0); const c = new THREE.Mesh(g, coneMat); c.position.copy(s.position); c.position.y -= .05; scene.add(c); }
+
+// chalk / impact dust puff
+const puffMat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, uniforms: { uT: { value: 0 }, uT0: { value: -10 }, uO: { value: V(0, 0, 0) }, uScale: { value: 1000 }, uTex: { value: dotTex } },
+  vertexShader: `attribute vec4 aS; uniform float uT,uT0,uScale; uniform vec3 uO; varying float vA; void main(){ float a=uT-uT0; vec3 d=normalize(aS.xyz-.5); vec3 p=uO+d*(1.-exp(-a*3.))*.7*vec3(1.,.4,1.)+vec3(0.,a*.25,0.); vec4 mv=modelViewMatrix*vec4(p,1.); gl_Position=projectionMatrix*mv; gl_PointSize=min((.04+a*.1)*uScale/max(-mv.z,.1),200.); vA=(a>0.&&a<1.6)?(1.-a/1.6)*.22:0.; }`,
+  fragmentShader: `uniform sampler2D uTex; varying float vA; void main(){ float a=texture2D(uTex,gl_PointCoord).r*vA; if(a<.005) discard; gl_FragColor=vec4(vec3(.85),a); }` });
+{ const n = 140, s = new Float32Array(n * 4); for (let i = 0; i < n * 4; i++) s[i] = rnd(); const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); g.setAttribute('aS', new THREE.BufferAttribute(s, 4)); const p = new THREE.Points(g, puffMat); p.frustumCulled = false; scene.add(p); }
+
+// =====================================================================
+//  POST
+// =====================================================================
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(W, H, { type: THREE.HalfFloatType, samples: 4 }));
+composer.addPass(new RenderPass(scene, cam));
+const bloom = new UnrealBloomPass(new THREE.Vector2(W, H), .7, .5, .85); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+const grade = new ShaderPass({
+  uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFade: { value: 0 }, uGrain: { value: .04 }, uVig: { value: .8 }, uRed: { value: 0 }, uDesat: { value: 0 }, uRes: { value: new THREE.Vector2(W, H) } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uT,uFade,uGrain,uVig,uRed,uDesat; uniform vec2 uRes; varying vec2 vUv;
+  float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+  void main(){ vec2 uv=vUv; vec2 d=uv-.5; float ab=.002*dot(d,d)*4.;
+    vec3 c=vec3(texture2D(tDiffuse,uv+d*ab).r, texture2D(tDiffuse,uv).g, texture2D(tDiffuse,uv-d*ab).b);
+    float l=dot(c,vec3(.299,.587,.114)); c=mix(vec3(l),c,1.06-uDesat);
+    c=mix(c, c*vec3(.92,1.0,1.08), .5); // cool teal grade
+    float v=smoothstep(.95,.28,length(d*vec2(1.,.62))); c*=mix(1.,v,uVig);
+    c+=(h(uv*uRes+fract(uT*7.3)*91.)-.5)*uGrain;
+    c=mix(c,c*vec3(1.25,.75,.72),uRed); c*=1.-uFade; gl_FragColor=vec4(c,1.); }`
+});
+composer.addPass(grade);
+
+// =====================================================================
+//  OVERLAY
+// =====================================================================
+const OUT = document.createElement('canvas'); OUT.width = W; OUT.height = H; const og = OUT.getContext('2d'); const S = W / 1080;
+const CAP = [
+  [0, 2.44, 'A guy tries to *impress a girl* at the gym.'], [2.94, 4.15, 'Let\'s see what happens to him.'], [4.78, 5.54, 'He walks in,'],
+  [5.76, 9.42, 'spots a beautiful girl, and immediately decides to *show off.*'], [9.89, 11.13, 'He lifts *heavier weights,*'],
+  [11.37, 14.22, '*flexes his muscles,* and does *extra exercises,*'], [14.45, 15.59, 'just to get *her attention.*'], [16.11, 17.18, 'But that\'s not all.'],
+  [17.65, 21.91, 'He keeps *staring at her,* watching her every move, and trying to *get closer.*'], [22.46, 25.62, 'Finally, he approaches her and tries to *start a conversation.*'],
+  [26.18, 27.70, 'But she\'s clearly *uncomfortable.*'], [28.13, 30.81, 'She *ignores him,* and tries to continue her workout.'],
+  [31.31, 33.22, 'Still, he *doesn\'t stop.*'], [33.63, 36.02, 'He keeps *following her,* trying to talk to her.'], [36.55, 39.80, 'And then… everything takes an *unexpected turn.*'],
+  [40.28, 43.02, 'She calls *gym security,* and reports his behavior.'], [43.47, 47.43, 'Within moments, security guards arrive, stop him, and *call the police.*'],
+  [47.84, 52.09, 'Just like that, his plan to impress her turns into a *complete disaster.*'], [52.63, 53.18, 'Remember…'],
+].map(([a, b, s]) => [a + OFF, b + OFF, s]);
+const CARDS = [[7.0, 11.0, 'OBJECTIVE', 'IMPRESS HER', '#ffb21e'], [11.0, 16.5, 'OBJECTIVE', 'SHOW OFF', '#ffb21e']];
+const ALERTS = [[19.6, 23.3, 'UNWANTED ATTENTION', 'eye'], [27.6, 31.5, 'SHE IS UNCOMFORTABLE', 'warn'], [34.0, 37.4, 'BOUNDARY CROSSED', 'x'], [41.6, 44.4, 'SECURITY ALERTED', 'shield'], [49.8, 53.4, 'MISSION FAILED', 'x']];
+
+function tokens(str) { const out = []; let hi = false; for (const part of str.split('*')) { for (const w of part.split(' ').filter(Boolean)) out.push([w, hi]); hi = !hi; } return out; }
+function drawCaption(t) {
+  const c = CAP.find(([a, b]) => t >= a - .05 && t < b + .35); if (!c) return;
+  const [a, b, s] = c; const tk = tokens(s); const fs = 62 * S; og.font = `800 ${fs}px Inter`;
+  const maxW = 900 * S, lines = [[]]; let lw = 0; const sp = og.measureText(' ').width;
+  for (const [w, hi] of tk) { const ww = og.measureText(w).width; if (lw + ww > maxW && lines[lines.length - 1].length) { lines.push([]); lw = 0; } lines[lines.length - 1].push([w, hi, ww]); lw += ww + sp; }
+  const total = tk.length, dur = Math.max(.3, b - a); let idx = 0; const fadeOut = 1 - ramp(t, b + .1, b + .35);
+  const y0 = H * .735 - (lines.length - 1) * fs * .62;
+  lines.forEach((ln, li) => {
+    const width = ln.reduce((s, [, , ww]) => s + ww, 0) + sp * (ln.length - 1); let x = (W - width) / 2; const y = y0 + li * fs * 1.22;
+    for (const [w, hi, ww] of ln) {
+      const appear = a + (idx / total) * dur * .85; const k = ramp(t, appear - .06, appear + .12); idx++;
+      if (k <= 0) { x += ww + sp; continue; }
+      og.save(); og.globalAlpha = k * fadeOut; const sc = .85 + .15 * back(k); og.translate(x + ww / 2, y); og.scale(sc, sc);
+      og.lineJoin = 'round'; og.lineWidth = 12 * S; og.strokeStyle = 'rgba(0,0,0,.85)'; og.textAlign = 'center'; og.textBaseline = 'middle';
+      og.shadowColor = 'rgba(0,0,0,.6)'; og.shadowBlur = 18 * S; og.strokeText(w, 0, 0); og.shadowBlur = 0;
+      og.fillStyle = hi ? '#ffb21e' : '#ffffff'; og.fillText(w, 0, 0); og.restore(); x += ww + sp;
+    }
+  });
+}
+function drawCard(t) {
+  const s = CARDS.find(([a, b]) => t >= a && t < b); if (!s) return; const [a, b, lab, txt, col] = s;
+  const k = easeOut(ramp(t, a, a + .35)) * (1 - ramp(t, b - .25, b)); if (k <= 0) return;
+  og.save(); og.globalAlpha = k; const y = 300 * S - (1 - k) * 30 * S;
+  og.font = `900 ${32 * S}px Inter`; if (og.letterSpacing !== undefined) og.letterSpacing = `${4 * S}px`; const lw = og.measureText(lab).width + 50 * S;
+  og.strokeStyle = col; og.lineWidth = 3 * S; og.beginPath(); og.roundRect((W - lw) / 2, y - 28 * S, lw, 56 * S, 8 * S); og.stroke();
+  og.fillStyle = col; og.textAlign = 'center'; og.textBaseline = 'middle'; og.fillText(lab, W / 2, y + 1 * S);
+  if (og.letterSpacing !== undefined) og.letterSpacing = '0px';
+  let fs = 88 * S; og.font = `900 ${fs}px Inter`; while (og.measureText(txt).width > 960 * S) { fs -= 4; og.font = `900 ${fs}px Inter`; }
+  og.shadowColor = 'rgba(0,0,0,.85)'; og.shadowBlur = 24 * S; og.fillStyle = '#fff'; og.fillText(txt, W / 2, y + 98 * S); og.shadowBlur = 0;
+  // progress pips
+  og.fillStyle = col; for (let i = 0; i < 3; i++) { og.globalAlpha = k * (i <= ((t - a) * 1.5 | 0) % 3 ? 1 : .3); og.fillRect(W / 2 - 60 * S + i * 44 * S, y + 152 * S, 32 * S, 6 * S); }
+  og.restore();
+}
+function drawAlert(t) {
+  const s = ALERTS.find(([a, b]) => t >= a && t < b); if (!s) return; const [a, b, txt, icon] = s;
+  const k = back(ramp(t, a, a + .4)) * (1 - ramp(t, b - .25, b)); if (k <= 0) return; const pulse = .5 + .5 * Math.sin((t - a) * 10);
+  og.save(); og.translate(W / 2, 330 * S); og.scale(k, k);
+  og.font = `900 ${66 * S}px Inter`; const tw = og.measureText(txt).width; const bw = Math.min(1010 * S, tw + 150 * S), bh = 126 * S;
+  og.fillStyle = `rgba(160,10,5,${.8 + .1 * pulse})`; og.beginPath(); og.roundRect(-bw / 2, -bh / 2, bw, bh, 16 * S); og.fill();
+  og.lineWidth = 5 * S; og.strokeStyle = `rgba(255,${120 + 80 * pulse | 0},80,.95)`; og.stroke();
+  const ix = -bw / 2 + 62 * S; og.fillStyle = '#fff'; og.strokeStyle = '#fff'; og.lineWidth = 7 * S; og.lineCap = 'round'; og.lineJoin = 'round';
+  if (icon === 'warn') { og.beginPath(); og.moveTo(ix, -36 * S); og.lineTo(ix + 38 * S, 30 * S); og.lineTo(ix - 38 * S, 30 * S); og.closePath(); og.stroke(); og.font = `900 ${44 * S}px Inter`; og.textAlign = 'center'; og.textBaseline = 'middle'; og.fillText('!', ix, 6 * S); }
+  if (icon === 'x') { og.beginPath(); og.arc(ix, 0, 36 * S, 0, 7); og.stroke(); og.beginPath(); og.moveTo(ix - 16 * S, -16 * S); og.lineTo(ix + 16 * S, 16 * S); og.moveTo(ix + 16 * S, -16 * S); og.lineTo(ix - 16 * S, 16 * S); og.stroke(); }
+  if (icon === 'eye') { og.beginPath(); og.moveTo(ix - 40 * S, 0); og.quadraticCurveTo(ix, -36 * S, ix + 40 * S, 0); og.quadraticCurveTo(ix, 36 * S, ix - 40 * S, 0); og.stroke(); og.beginPath(); og.arc(ix, 0, 12 * S, 0, 7); og.fill(); }
+  if (icon === 'shield') { og.beginPath(); og.moveTo(ix, -40 * S); og.lineTo(ix + 34 * S, -26 * S); og.quadraticCurveTo(ix + 32 * S, 22 * S, ix, 40 * S); og.quadraticCurveTo(ix - 32 * S, 22 * S, ix - 34 * S, -26 * S); og.closePath(); og.stroke(); }
+  og.fillStyle = '#fff'; og.textAlign = 'center'; og.textBaseline = 'middle'; og.font = `900 ${Math.min(66 * S, 66 * S * (bw - 150 * S) / tw)}px Inter`; og.fillText(txt, 40 * S, 4 * S);
+  og.restore();
+}
+function bigText(lines, t, a, b, y) {
+  const out = 1 - ramp(t, b - .4, b); if (t < a || out <= 0) return;
+  og.save(); og.textAlign = 'center'; og.textBaseline = 'middle'; let yy = y;
+  lines.forEach((ln, i) => {
+    const kk = easeOut(ramp(t, a + (ln.d ?? i * .18), a + (ln.d ?? i * .18) + .5));
+    let fs = (ln.size || 110) * S; og.font = `900 ${fs}px Inter`; if (og.letterSpacing !== undefined) og.letterSpacing = `${(ln.ls || 1) * S}px`;
+    while (og.measureText(ln.t).width > 980 * S) { fs -= 3; og.font = `900 ${fs}px Inter`; }
+    yy += (ln.pre || 0) * S;
+    if (kk > 0) { og.save(); og.globalAlpha = out * kk; og.translate(W / 2, yy + (1 - kk) * 40 * S); og.shadowColor = ln.glow || 'rgba(0,0,0,.9)'; og.shadowBlur = 40 * S; og.fillStyle = ln.c || '#fff'; og.fillText(ln.t, 0, 0); og.shadowBlur = 0; og.fillText(ln.t, 0, 0); og.restore(); }
+    yy += fs * 1.08;
+  });
+  og.restore();
+}
+function drawOverlay(t) {
+  og.clearRect(0, 0, W, H); og.drawImage(renderer.domElement, 0, 0);
+  bigText([{ t: 'THE GYM', size: 120 }, { t: 'SHOW-OFF', size: 160, c: '#ffb21e', glow: 'rgba(255,160,20,.6)' }, { t: 'LET\'S SEE WHAT HAPPENS…', size: 40, ls: 6, c: '#dddddd', pre: 20, d: .9 }], t, .3, 4.0, 470 * S);
+  if (t < 53.6) drawCaption(t);
+  drawCard(t); drawAlert(t);
+  bigText([{ t: 'CONFIDENCE', size: 130 }, { t: 'IS ATTRACTIVE.', size: 104, c: '#3fe0a0', glow: 'rgba(40,220,150,.55)' }], t, 54.5, 57.25, 470 * S);
+  bigText([{ t: 'MAKING SOMEONE', size: 92 }, { t: 'UNCOMFORTABLE', size: 112, c: '#ff4a3a', glow: 'rgba(255,60,40,.6)' }, { t: 'IS NEVER OKAY.', size: 112 }, { t: 'RESPECT  ·  BOUNDARIES  ·  CONSENT', size: 34, ls: 5, c: '#cfcfcf', pre: 40, d: 1.4 }], t, 57.35, 62.3, 440 * S);
+  return OUT;
+}
+
+// =====================================================================
+//  ACTOR CHOREOGRAPHY (absolute time)
+// =====================================================================
+const GIRL1 = V(-3.2, 0, -7.0), GUYP = V(2.2, 0, -3.0);
+const v2 = (x, z) => new THREE.Vector2(x, z);
+function along(path, k) { // path: [[x,z],...] ; k 0..1 by length
+  let L = 0; const seg = []; for (let i = 1; i < path.length; i++) { const d = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]); seg.push(d); L += d; }
+  let s = clamp(k) * L; for (let i = 0; i < seg.length; i++) { if (s <= seg[i] || i === seg.length - 1) { const u = seg[i] ? clamp(s / seg[i]) : 0; const a = path[i], b = path[i + 1]; return { x: lerp(a[0], b[0], u), z: lerp(a[1], b[1], u), dir: Math.atan2(b[0] - a[0], b[1] - a[1]) }; } s -= seg[i]; }
+}
+const BAR = { held: false };
+let girlPos = V(0, 0, 0);
+function actors(t) {
+  for (const p of [guy, girl, sec1, sec2, cop, staff, runner, presser, stretcher]) { p.root.visible = true; p.J.neck.visible = true; }
+  dbL.visible = dbR.visible = false; phone.visible = false; radio.visible = false;
+  // ---------- GIRL ----------
+  let gx = GIRL1.x, gz = GIRL1.z, gry = 0.35, gpose;
+  if (t < 26.0) { gpose = curlPose(t * 2.6); dbL.visible = dbR.visible = true; }
+  else if (t < 28.4) { const k = ramp(t, 26.0, 26.6); gz = GIRL1.z - .25 * ease(k); gpose = mixPose(curlPose(26 * 2.6), P.cross, ease(k)); dbL.visible = dbR.visible = k < .5; gry = lerp(.35, .1, k); }
+  else if (t < 32.7) { const k = ease(ramp(t, 28.4, 29.1)); gz = GIRL1.z - .25; gry = lerp(.1, Math.PI - .2, k); gpose = k < 1 ? mixPose(P.cross, P.stand, k) : curlPose((t - 29.1) * 2.6); dbL.visible = dbR.visible = k >= 1; }
+  else if (t < 35.6) { const k = ramp(t, 32.7, 35.6); const q = along([[GIRL1.x, GIRL1.z - .25], [-6.5, -4.5], [CABLE.x + .95, CABLE.z]], eio(k)); gx = q.x; gz = q.z; gry = q.dir; gpose = walkPose(t * 8.5, 1); }
+  else if (t < 38.2) { gx = CABLE.x + .95; gz = CABLE.z; gry = -Math.PI / 2; const c = .5 - .5 * Math.cos((t - 35.6) * 3.0); gpose = { shL: [-1.45, 0, .15], shR: [-1.45, 0, -.15], elL: [-.1 - 1.7 * c, 0, 0], elR: [-.1 - 1.7 * c, 0, 0], spine: [-.05, 0, 0] }; }
+  else if (t < 41.3) { gx = CABLE.x + .95; gz = CABLE.z; const k = ease(ramp(t, 38.2, 38.9)); gry = lerp(-Math.PI / 2, .25, k); gpose = mixPose(P.stand, P.phone, ease(ramp(t, 38.6, 39.4))); phone.visible = t > 38.7; }
+  else if (t < 45.4) { const k = ease(ramp(t, 41.3, 42.6)); gx = lerp(CABLE.x + .95, -7.4, k); gz = lerp(CABLE.z, 2.4, k); gry = lerp(.25, 1.2, k); gpose = k < 1 ? mixPose(walkPose(t * 8, 1), P.phoneEar, ramp(t, 41.3, 41.8)) : P.phoneEar; phone.visible = true; }
+  else if (t < 53.6) { gx = -7.4; gz = 2.4; gry = faceDir(-7.4, 2.4, 2, 4) ; gpose = P.cross; }
+  else { gx = CABLE.x + .95; gz = CABLE.z; gry = -Math.PI / 2; const c = .5 - .5 * Math.cos((t - 53.6) * 3.0); gpose = { shL: [-1.45, 0, .15], shR: [-1.45, 0, -.15], elL: [-.1 - 1.7 * c, 0, 0], elR: [-.1 - 1.7 * c, 0, 0] }; }
+  place(girl, gx, gz, gry, gpose); girlPos.set(gx, 0, gz);
+  // cable rope from pulley to girl's hands
+  const cableActive = (t >= 35.6 && t < 38.3) || t >= 53.6; cableRope.visible = cableActive;
+  // ---------- GUY ----------
+  let x = 8, z = 11.2, ry = Math.PI, pose = P.stand, look = 0, y = null; BAR.held = false;
+  if (t < 5.78) { x = 8; z = 11.6; ry = Math.PI; pose = P.stand; }
+  else if (t < 8.0) { const k = ramp(t, 5.78, 8.0); const q = along([[8, 11.6], [7.6, 8.5], [6.6, 6.4]], k); x = q.x; z = q.z; ry = q.dir; pose = walkPose(t * 8, 1); look = ramp(t, 6.8, 7.6); }
+  else if (t < 10.89) { x = 6.6; z = 6.4; ry = lerp(faceDir(7.6, 8.5, 6.6, 6.4), faceDir(6.6, 6.4, GIRL1.x, GIRL1.z), ease(ramp(t, 8, 8.6))); const k = ramp(t, 8.9, 10.7); pose = { ...P.stand, shL: [0, 0, .12 + .35 * Math.sin(k * Math.PI * 2) * (k > 0 && k < 1)], shR: [0, 0, -.12 - .35 * Math.sin(k * Math.PI * 2) * (k > 0 && k < 1)], spine: [-.06 * Math.sin(k * Math.PI), 0, 0] }; look = 1; }
+  else if (t < 13.4) { x = GUYP.x; z = GUYP.z; ry = faceDir(GUYP.x, GUYP.z, GIRL1.x, GIRL1.z);
+    const l = ease(ramp(t, 11.5, 12.6)) * (1 - ease(ramp(t, 12.85, 13.3))); const sh = Math.sin(t * 40) * .02 * (t > 11.5 && t < 12.9);
+    pose = { spine: [lerp(.95, -.05, l) + sh, 0, 0], hipL: [lerp(-1.15, 0, l), 0, .08], hipR: [lerp(-1.15, 0, l), 0, -.08], knL: [lerp(1.25, 0, l), 0, 0], knR: [lerp(1.25, 0, l), 0, 0], shL: [lerp(-.95, .05, l), 0, .04], shR: [lerp(-.95, .05, l), 0, -.04], elL: [0, 0, 0], elR: [0, 0, 0], neck: [lerp(-.5, 0, l), 0, 0] };
+    y = .955 * guy.scale - lerp(.42, 0, l); BAR.held = true; look = .2 * l; }
+  else if (t < 15.3) { x = GUYP.x; z = GUYP.z; ry = faceDir(GUYP.x, GUYP.z, GIRL1.x, GIRL1.z) - .5; const k = ease(ramp(t, 13.4, 13.8)); pose = mixPose(P.stand, P.flex, k); const pump = Math.sin(t * 6) * .08; pose.elL[2] += pump; pose.elR[2] -= pump; look = .9; }
+  else if (t < 17.0) { // push-ups
+    x = GUYP.x - .3; z = GUYP.z + .4; ry = faceDir(GUYP.x, GUYP.z, GIRL1.x, GIRL1.z) + Math.PI / 2; const c = .5 + .5 * Math.cos((t - 15.3) * 9);
+    guy.root.rotation.order = 'YXZ'; pose = { shL: [-1.55, 0, .25], shR: [-1.55, 0, -.25], elL: [-1.2 * (1 - c), 0, 0], elR: [-1.2 * (1 - c), 0, 0], neck: [-.6, 0, 0] };
+    place(guy, x, z, ry, pose, .3 + .2 * c); guy.root.rotation.x = 1.36; return finishOthers(t);
+  }
+  else if (t < 20.2) { x = GUYP.x; z = GUYP.z; ry = faceDir(GUYP.x, GUYP.z, GIRL1.x, GIRL1.z); pose = { ...P.hips, spine: [.08, 0, 0] }; look = 1; }
+  else if (t < 22.9) { const k = ramp(t, 20.2, 22.9); const step = Math.floor(k * 3) + eio((k * 3) % 1); const q = along([[GUYP.x, GUYP.z], [-.4, -5.0]], step / 3); x = q.x; z = q.z; ry = faceDir(x, z, GIRL1.x, GIRL1.z); pose = walkPose(t * 6, ((k * 3) % 1 < .7) ? .7 : .1, .3); look = 1; }
+  else if (t < 24.6) { const k = ramp(t, 22.9, 24.6); const q = along([[-.4, -5.0], [-1.9, -6.1]], eio(k)); x = q.x; z = q.z; ry = faceDir(x, z, GIRL1.x, GIRL1.z); pose = walkPose(t * 7.5, 1 - ramp(t, 24.2, 24.6)); look = 1; }
+  else if (t < 32.9) { x = -1.9; z = -6.1; ry = faceDir(x, z, girlPos.x, girlPos.z); pose = talkPose(t); look = 1; }
+  else if (t < 36.2) { const k = ramp(t, 32.9, 36.2); const q = along([[-1.9, -6.1], [-6.0, -3.6], [CABLE.x + 1.9, CABLE.z + .7]], eio(clamp(k * 1.03 - .03))); x = q.x; z = q.z; ry = q.dir; pose = mixPose(walkPose(t * 8.5, 1), talkPose(t), .35); look = .8; }
+  else if (t < 45.5) { x = CABLE.x + 1.9; z = CABLE.z + .7; ry = faceDir(x, z, girlPos.x, girlPos.z); pose = t < 41.3 ? talkPose(t) : mixPose(talkPose(t), P.hips, ramp(t, 41.3, 41.8)); look = 1; }
+  else if (t < 49.4) { x = CABLE.x + 1.9; z = CABLE.z + .7; ry = faceDir(x, z, 0, 6); pose = mixPose(P.stand, P.handsUp, ease(ramp(t, 46.3, 46.9))); look = 0; }
+  else { const k = ramp(t, 49.4, 53.6); const q = along([[CABLE.x + 1.9, CABLE.z + .7], [-2, 4.5], [7.6, 8.6], [8, 11.8]], eio(k)); x = q.x; z = q.z; ry = q.dir; pose = { ...walkPose(t * 7.5, 1, .2), neck: [.45, 0, 0], shL: [.3, 0, .1], shR: [.3, 0, -.1], elL: [-.2, 0, 0], elR: [-.2, 0, 0] }; }
+  place(guy, x, z, ry, pose, y); if (look) lookAtNeck(guy, girlPos.x, girlPos.z, look);
+  return finishOthers(t);
+}
+function finishOthers(t) {
+  const gpx = guy.root.position.x, gpz = guy.root.position.z;
+  // girl ignores: looks away / down when he's talking
+  if (t > 26 && t < 29) lookAtNeck(girl, gpx, gpz, .8 * (1 - ramp(t, 27.2, 27.9)));
+  if (t > 38.2 && t < 41.3) girl.J.neck.rotation.x = .45;
+  if (t > 45.4 && t < 53.6) lookAtNeck(girl, gpx, gpz, .9);
+  // ---------- SECURITY ----------
+  const tgt = V(CABLE.x + 1.9, 0, CABLE.z + .7);
+  for (const [p, off, d] of [[sec1, [.75, .35], 0], [sec2, [.9, -.6], .25]]) {
+    if (t < 44.4) { p.root.visible = t > 40.0; place(p, 9.0 + off[1], 3.0, -Math.PI / 2, P.cross); if (t < 40) p.root.visible = false; continue; }
+    if (t < 46.2 + d) { const k = ramp(t, 44.4 + d * .2, 46.2 + d); const q = along([[9.0 + off[1], 3.0], [2.5, 2.0], [tgt.x + off[0], tgt.z + off[1]]], eio(k)); place(p, q.x, q.z, q.dir, walkPose(t * 10, 1.15)); continue; }
+    if (t < 49.4) { const x = tgt.x + off[0], z = tgt.z + off[1]; place(p, x, z, faceDir(x, z, tgt.x, tgt.z), p === sec1 ? P.stop : P.radio); if (p === sec2) radio.visible = true; continue; }
+    if (t < 53.6) { const k = ramp(t, 49.4, 53.6); const q = along([[CABLE.x + 1.9, CABLE.z + .7], [-2, 4.5], [7.6, 8.6], [8, 11.8]], eio(clamp(k - (p === sec1 ? -.03 : .05)))); const sx = p === sec1 ? .55 : -.55;
+      place(p, q.x + Math.cos(q.dir) * sx, q.z - Math.sin(q.dir) * sx, q.dir, p === sec1 ? { ...walkPose(t * 7.5, 1), shR: [-.5, 0, -.5], elR: [-.4, 0, 0] } : { ...walkPose(t * 7.5 + 1, 1), shL: [-.5, 0, .5], elL: [-.4, 0, 0] }); continue; }
+    place(p, 9.2 + off[1], 11.5 + off[0], Math.PI, P.cross);
+  }
+  // ---------- POLICE ----------
+  const ck = ease(ramp(t, 46.0, 48.6)); car.position.set(lerp(-30, 4.6, ck), 0, 16.0); car.visible = t > 45.5;
+  const on = t > 45.5; const ph = Math.floor(t * 7) % 2;
+  for (const m of lightBar) m.material.color.set(m.userData.red ? (ph ? '#ff1a10' : '#300404') : (ph ? '#04083a' : '#2040ff'));
+  polR.intensity = on ? (ph ? 60 : 4) : 0; polB.intensity = on ? (ph ? 4 : 70) : 0;
+  if (t < 49.0) cop.root.visible = false;
+  else { const k = ease(ramp(t, 49.0, 51.5)); place(cop, lerp(5.5, 7.3, k), lerp(15.0, 12.2, k), faceDir(5.5, 15, 7.3, 12.2) * (1 - k) + Math.PI * k, k < 1 ? walkPose(t * 7, 1) : P.hips); }
+  // doors slide
+  const dOpen = Math.max(ramp(t, 5.6, 6.2) * (1 - ramp(t, 7.4, 8.0)), ramp(t, 52.0, 52.5));
+  doorL.position.x = 8 - .6 - dOpen * 1.1; doorR.position.x = 8 + .6 + dOpen * 1.1;
+  // ---------- EXTRAS ----------
+  place(staff, 9.2, 6.95, Math.PI, { ...P.stand, shL: [-.6, 0, .1], shR: [-.6, 0, -.1], elL: [-.8, 0, 0], elR: [-.8, 0, 0] }); if (t > 44 && t < 54) lookAtNeck(staff, gpx, gpz, .8);
+  place(runner, -10.3, -3.6, -Math.PI / 2, runPose(t * 9.5), .955 * runner.scale + .22 + Math.abs(Math.sin(t * 9.5)) * .05);
+  const bp = .5 - .5 * Math.cos(t * 2.4);
+  place(presser, 6.5, -6.5, 0, { shL: [-1.57, 0, .35], shR: [-1.57, 0, -.35], elL: [-1.1 * (1 - bp), 0, 0], elR: [-1.1 * (1 - bp), 0, 0], hipL: [-1.3, 0, .2], hipR: [-1.3, 0, -.2], knL: [1.6, 0, 0], knR: [1.6, 0, 0] }, .62);
+  presser.root.rotation.set(-Math.PI / 2, 0, 0); presser.root.position.set(6.5, .62, -6.1);
+  place(stretcher, 8.4, -1.3, -2.2, { spine: [.9 + .1 * Math.sin(t), 0, 0], shL: [-1.4, 0, .2], shR: [-1.4, 0, -.2], neck: [-.3, 0, 0], hipL: [-.1, 0, .2], hipR: [-.1, 0, -.2] });
+  if (t > 45 && t < 53) lookAtNeck(stretcher, gpx, gpz, .7);
+}
+function placeProps(t) {
+  scene.updateMatrixWorld(true);
+  const a = new THREE.Vector3(), b = new THREE.Vector3();
+  // guy barbell: between hands while lifting, else on platform
+  bigBar.rotation.set(0, 0, 0);
+  if (BAR.held) { guy.J.handL.getWorldPosition(a); guy.J.handR.getWorldPosition(b); bigBar.position.copy(a).add(b).multiplyScalar(.5); bigBar.position.y -= .04; bigBar.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x); bigBar.position.y = Math.max(bigBar.position.y, .225); }
+  else { bigBar.position.set(GUYP.x, .225, GUYP.z + .25); bigBar.rotation.y = faceDir(GUYP.x, GUYP.z, GIRL1.x, GIRL1.z); }
+  // bench bar
+  presser.J.handL.getWorldPosition(a); presser.J.handR.getWorldPosition(b); benchBar.position.copy(a).add(b).multiplyScalar(.5); benchBar.rotation.set(0, 0, 0);
+  // cable
+  if (cableRope.visible) { girl.J.handL.getWorldPosition(a); girl.J.handR.getWorldPosition(b); a.add(b).multiplyScalar(.5); const p0 = V(CABLE.x + .12, 1.75, CABLE.z); const d = a.clone().sub(p0); cableRope.position.copy(p0); cableRope.scale.set(1, d.length(), 1); cableRope.quaternion.setFromUnitVectors(V(0, 1, 0), d.normalize());
+    const c = (t >= 53.6 ? .5 - .5 * Math.cos((t - 53.6) * 3.0) : .5 - .5 * Math.cos((t - 35.6) * 3.0)); stackTop.position.y = c * .35; } else stackTop.position.y = 0;
+}
+
+// =====================================================================
+//  CAMERA & SHOTS
+// =====================================================================
+let FOV = 60;
+function look(pos, tgt, fov = 60, shake = 0, t = 0) {
+  const p = pos.clone(), q = tgt.clone();
+  if (shake) { p.x += shake * (Math.sin(t * 1.7) * .6 + Math.sin(t * 4.3) * .25); p.y += shake * (Math.sin(t * 2.1 + 1) * .5 + Math.sin(t * 5.1) * .2); q.x += shake * Math.sin(t * 1.3 + 2) * .8; q.y += shake * Math.sin(t * 1.9 + 3) * .6; }
+  cam.position.copy(p); cam.lookAt(q); cam.fov = fov; FOV = fov; cam.updateProjectionMatrix();
+}
+const wp = (p, j = 'head') => { const v = new THREE.Vector3(); (j === 'head' ? p.J.head : p.root).getWorldPosition(v); return v; };
+let FX = { fade: 0, red: 0, desat: 0 };
+const SHOTS = [
+  [0, 3.94, (t, u) => { look(lv(V(-10.5, 4.3, 9.2), V(-8.0, 3.4, 8.4), ease(u)), lv(V(0, 1.4, -4), V(-1, 1.3, -5), u), 64, .01, t); FX.fade = 1 - ramp(t, 0, .6); }],                   // wide crane over gym
+  [3.94, 5.78, (t, u) => { look(lv(V(8.0, 1.35, 6.4), V(8.0, 1.4, 7.3), u), V(8, 1.45, 11.6), 46, .008, t); }],                                                                       // silhouette outside the glass
+  [5.78, 8.0, (t, u) => { const h = wp(guy, 'root'); look(lv(V(4.4, .45, 4.2), V(4.6, .5, 4.0), u), V(h.x, 1.3, h.z), 60, .01, t); }],                                               // low-angle walk in
+  [8.0, 9.4, (t, u) => { const g = wp(girl); look(lv(V(7.2, 1.85, 7.1), V(7.0, 1.8, 6.8), u), lv(g.clone().add(V(0, -.2, 0)), g, u), 30, .006, t); }],                               // over-shoulder POV spotting her (tele)
+  [9.4, 10.89, (t, u) => { const h = wp(guy); look(lv(V(5.6, 1.7, 5.0), V(5.8, 1.72, 5.35), u), h.clone().add(V(0, -.05, 0)), 38, .006, t); }],                                   // close: his smirk, rolls shoulders
+  [10.89, 13.4, (t, u) => { look(lv(V(4.4, .5, -1.3), V(4.0, .55, -1.6), u), V(2.2, .9, -3.0), 52, .012, t); }],                                                                   // heavy deadlift low angle
+  [13.4, 15.3, (t, u) => { look(lv(V(.2, 1.6, .2), V(.6, 1.6, -.5), u), V(2.2, 1.5, -3.0), 50, .008, t); }],                                                                       // flex, girl visible beyond
+  [15.3, 17.1, (t, u) => { look(lv(V(4.0, .6, -.9), V(3.7, .65, -1.2), u), V(1.6, .35, -2.6), 56, .01, t); }],                                                                     // push-ups
+  [17.1, 18.65, (t, u) => { look(lv(V(4.4, 1.75, -1.2), V(3.6, 1.72, -1.9), ease(u)), V(-2.8, 1.1, -7.0), 48, .006, t); }],                                                        // ominous dolly behind him
+  [18.65, 20.3, (t, u) => { const h = wp(guy); look(lv(V(-.4, 1.65, -4.6), V(-.2, 1.68, -4.3), u), h, 34, .004, t); }],                                                            // close: staring
+  [20.3, 23.46, (t, u) => { look(lv(V(-6.2, 1.4, -8.6), V(-6.0, 1.45, -8.2), u), lv(V(-1.5, 1.2, -5.0), V(-2.2, 1.2, -6.0), u), 50, .008, t); }],                                   // from behind her: he creeps closer
+  [23.46, 27.18, (t, u) => { look(lv(V(.8, 1.55, -3.4), V(.2, 1.55, -3.9), ease(u)), V(-2.6, 1.35, -6.7), 48, .008, t); }],                                                        // approach & talk two-shot
+  [27.18, 31.81, (t, u) => { const g = wp(girl); look(lv(V(-4.8, 1.55, -5.0), V(-4.5, 1.55, -5.4), u), g.clone().add(V(.4, -.15, 0)), 42, .006, t); }],                            // her discomfort / turns away
+  [31.81, 37.02, (t, u) => { const g = wp(girl, 'root'), h = wp(guy, 'root'); const m = g.clone().lerp(h, .45); look(m.clone().add(V(3.4, 1.7, 2.6)), V(m.x, 1.0, m.z), 60, .012, t); }],                           // tracking: he follows her
+  [37.02, 40.8, (t, u) => { const g = wp(girl); const k = ease(u); look(lv(V(-7.6, 1.55, -2.9), V(-8.1, 1.5, -2.1), k), g.clone().add(V(0, -.2, 0)), lerp(52, 42, k), 0, t); FX.desat = .35 * ramp(t, 37.0, 38); }], // slow push: she pulls phone
+  [40.8, 44.47, (t, u) => { if (t < 42.2) { scene.updateMatrixWorld(true); const pp = new THREE.Vector3(); phone.getWorldPosition(pp); const n = pp.clone().add(V(.18, .1, .25)); look(lv(n, pp.clone().add(V(.14, .07, .2)), u), pp, 40); } else { look(lv(V(-4.6, 1.6, 4.6), V(-4.9, 1.6, 4.2), u), V(-7.4, 1.4, 2.4), 46, .006, t); } }], // phone screen, then report
+  [44.47, 48.84, (t, u) => { look(lv(V(-2.4, 2.3, 4.6), V(-3.2, 2.0, 3.8), ease(u)), V(-7.2, 1.2, .3), 58, .014, t); }],                                                           // guards arrive & stop him
+  [48.84, 53.63, (t, u) => { if (t < 51.2) look(lv(V(-3.2, 2.7, 23.5), V(-2.2, 2.6, 22.4), u), V(6.4, 1.5, 11.6), 42, .008, t); else look(lv(V(11.8, 1.7, 15.6), V(11.4, 1.65, 15.1), u), V(8.0, 1.3, 11.0), 50, .008, t); FX.red = .15; }], // police outside, escorted out
+  [53.63, DUR, (t, u) => { look(lv(V(-2.0, 3.6, 5.0), V(-1.0, 6.2, 9.0), ease(ramp(t, 53.63, 62))), lv(V(-8.5, 1.2, -.4), V(-6, .8, -2), u), 58, .006, t); FX.fade = ramp(t, 61.4, 62.4); FX.desat = .2; }], // calm wide, message
+];
+
+// =====================================================================
+//  RENDER
+// =====================================================================
+window.renderAt = function (t) {
+  t = clamp(t, 0, DUR - 1e-4); FX = { fade: 0, red: 0, desat: 0 };
+  let si = SHOTS.findIndex(([a, b]) => t >= a && t < b); if (si < 0) si = SHOTS.length - 1;
+  const [a, b, fn] = SHOTS[si]; const u = (t - a) / (b - a);
+  guy.root.rotation.x = 0;
+  actors(t); placeProps(t);
+  scene.updateMatrixWorld(true);
+  fn(t, u);
+  if (si === 15) { const ear = new THREE.Vector3(); girl.J.head.getWorldPosition(ear); if (t < 42.2) { phone.lookAt(cam.position); drawPhone(t - 40.8, 'call'); } }
+  if (si === 14) { const eye = new THREE.Vector3(); girl.J.head.getWorldPosition(eye); phone.lookAt(eye); drawPhone(0, 'home'); }
+  dustMat.uniforms.uT.value = t; dustMat.uniforms.uScale.value = H / (2 * Math.tan(FOV * Math.PI / 360));
+  puffMat.uniforms.uT.value = t; puffMat.uniforms.uT0.value = 13.25; puffMat.uniforms.uO.value.set(GUYP.x, .1, GUYP.z + .25); puffMat.uniforms.uScale.value = dustMat.uniforms.uScale.value;
+  const sinceCut = t - a; if (si > 0 && sinceCut < .1) FX.fade = Math.max(FX.fade, .5 * (1 - sinceCut / .1));
+  grade.uniforms.uT.value = t; grade.uniforms.uFade.value = FX.fade; grade.uniforms.uRed.value = FX.red; grade.uniforms.uDesat.value = FX.desat;
+  composer.render();
+};
+window.frame = (t) => { window.renderAt(t); return drawOverlay(t).toDataURL('image/jpeg', 0.92); };
+window.DUR = DUR;
+await document.fonts.load('900 80px Inter'); await document.fonts.load('800 60px Inter');
+window.renderAt(1); window.READY = true;
+</script></body></html>

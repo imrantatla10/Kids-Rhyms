@@ -1,0 +1,7 @@
+node_modules
+output/stills/
+output/frames/
+output/sheet*.jpg
+output/log_*.txt
+audio/take*.mp3
+audio/final_mix.wav
