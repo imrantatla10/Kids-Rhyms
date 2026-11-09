@@ -6,22 +6,18 @@
 
 Background: the user's supplied image (`src/bg.png`). Babar's values (green) are on his side (left) and Kohli's values (blue) are on his side (right).
 
-| Time | Step |
-|---|---|
-| 0–5.6 s | Title: بابر اعظم بمقابلہ ویرات کوہلی — کون کس سے آگے؟ |
-| 5.6–11 s | کرکٹ کے 2 بڑے نام: پاکستان / بھارت |
-| 11–18 s | پیدائش: 15 اکتوبر 1994 لاہور / 5 نومبر 1988 دہلی |
-| 18–23 s | انٹرنیشنل کرکٹ کا آغاز: 2015 / 2008 |
-| 23–33.6 s | ڈیبیو: ODI, T20, Test |
-| 33.6–39 s | ورلڈ کپ فائنلز: 1 / 4 |
-| 39–46.6 s | کپتانی: 152 میچز، 85 فتوحات / 213 میچز، 135 فتوحات |
-| 46.6–56.8 s | رنز 16,038 / 28,527 · سنچریاں 32 / 86 · ففٹیز 111 / 148 |
-| 56.8–63.5 s | بابر: تینوں فارمیٹس · کوہلی: صرف ODI |
+Text policy: no Urdu. Each step shows only a short English title, with the digits/dates below it (Babar on the left, Kohli on the right).
 
-Transitions: a gold light-sweep wipe, a flash and a slide-in at each step, count-up digits, a "آگے" badge and a side glow for whoever leads, a slow zoom on the background, and sparks.
+| Time | Step (title → Babar / Kohli) |
+|---|---|
+| 0–4.4 s | BABAR AZAM VS VIRAT KOHLI · WHO'S AHEAD? |
+| 4.4 s, then every 4.55 s | BORN 15 OCT 1994 / 5 NOV 1988 → INTERNATIONAL DEBUT 2015 / 2008 → ODI DEBUT 31 MAY 2015 / 18 AUG 2008 → T20I DEBUT 7 SEP 2016 / 12 JUN 2010 → TEST DEBUT 13 OCT 2016 / 20 JUN 2011 → WORLD CUP FINALS 1 / 4 → CAPTAINCY · MATCHES 152 / 213 → CAPTAINCY · WINS 85 / 135 → INTERNATIONAL RUNS 16,038 / 28,527 → CENTURIES 32 / 86 → FIFTIES 111 / 148 → CURRENTLY PLAYING (TEST · ODI · T20 / ODI only) |
+| 59–63.5 s | FINAL TALLY |
+
+Transitions: a gold light-sweep wipe, a flash and a slide-in at each step, count-up digits with comparison bars, a gold arrow and side glow for whoever leads, a slow zoom on the background, and sparks.
 
 ## Rebuild
-Fonts: Noto Nastaliq Urdu and Noto Naskh Arabic (OFL, from Google Fonts) are in `fonts/`.
+Text uses the system Inter font. (`fonts/` holds Urdu fonts from an earlier version and is no longer used.)
 ```bash
 node src/render.mjs                 # frames -> output/frames
 ffmpeg -framerate 30 -i output/frames/f%05d.jpg -f lavfi -i anullsrc=r=48000:cl=stereo -c:v libx264 -crf 18 -pix_fmt yuv420p -c:a aac -shortest -t 63.5 output/Babar_vs_Kohli_1080x1080.mp4

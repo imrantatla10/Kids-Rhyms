@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ur"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <style>
 @font-face{font-family:'Nastaliq';src:url('/fonts/nastaliq-700.woff') format('woff');font-weight:700}
 @font-face{font-family:'Nastaliq';src:url('/fonts/nastaliq-400.woff') format('woff');font-weight:400}
@@ -19,7 +19,7 @@ const K = S / 1254;                          // image → canvas scale
 const P = { x0: 300 * K + 8, x1: 950 * K - 8, y0: 205 * K, y1: 985 * K }; // centre panel (inner)
 P.w = P.x1 - P.x0; P.h = P.y1 - P.y0; P.cx = (P.x0 + P.x1) / 2;
 const GREEN = '#1fbf6a', GREEN2 = '#0b6b3a', BLUE = '#2f7bff', BLUE2 = '#123d9a', ORANGE = '#ff8a1f', GOLD = '#ffcf4a';
-const UR = '"Nastaliq", "Naskh", serif', NUM = '"Naskh", "Inter", sans-serif';
+const UR = 'Inter, sans-serif', NUM = 'Inter, sans-serif';
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -29,34 +29,28 @@ const easeOut = t => 1 - Math.pow(1 - clamp(t), 3);
 const back = t => { t = clamp(t); const c = 1.70158, c3 = c + 1; return 1 + c3 * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
 const fmt = n => Math.round(n).toLocaleString('en-US');
 
-// ---------------- timeline (seconds) ----------------
-const SC = [
-  { id: 'intro', a: 0.0, b: 5.6 },
-  { id: 'names', a: 5.6, b: 11.0 },
-  { id: 'born', a: 11.0, b: 18.0 },
-  { id: 'start', a: 18.0, b: 23.0 },
-  { id: 'debut', a: 23.0, b: 33.6 },
-  { id: 'finals', a: 33.6, b: 39.0 },
-  { id: 'capt', a: 39.0, b: 46.6 },
-  { id: 'record', a: 46.6, b: 56.8 },
-  { id: 'formats', a: 56.8, b: DUR },
+// ---------------- timeline: one stat per step (English titles, digits only) ----------------
+// [title, babar, kohli, kind, leader]  kind: 'date' | 'num' | 'year' | 'formats'
+const STEPS = [
+  ['BORN', '15 OCT 1994', '5 NOV 1988', 'date', null],
+  ['INTERNATIONAL DEBUT', 2015, 2008, 'year', 'k'],
+  ['ODI DEBUT', '31 MAY 2015', '18 AUG 2008', 'date', 'k'],
+  ['T20I DEBUT', '7 SEP 2016', '12 JUN 2010', 'date', 'k'],
+  ['TEST DEBUT', '13 OCT 2016', '20 JUN 2011', 'date', 'k'],
+  ['WORLD CUP FINALS', 1, 4, 'num', 'k'],
+  ['CAPTAINCY · MATCHES', 152, 213, 'num', 'k'],
+  ['CAPTAINCY · WINS', 85, 135, 'num', 'k'],
+  ['INTERNATIONAL RUNS', 16038, 28527, 'num', 'k'],
+  ['CENTURIES', 32, 86, 'num', 'k'],
+  ['FIFTIES', 111, 148, 'num', 'k'],
+  ['CURRENTLY PLAYING', null, null, 'formats', null],
 ];
-// narrative line under the panel (script, step by step)
-const LINES = [
-  [0.3, 5.5, 'کرکٹ کی دنیا کے 2 بڑے نام'],
-  [5.7, 11.0, 'لیکن اعداد و شمار کی جنگ میں کون آگے ہے؟'],
-  [11.1, 18.0, 'سب سے پہلے پیدائش!'],
-  [18.1, 23.0, 'کوہلی نے 2008 میں انٹرنیشنل کرکٹ میں قدم رکھا، بابر نے 2015 میں'],
-  [23.1, 33.6, 'ڈیبیو کی تاریخیں'],
-  [33.7, 39.0, 'ورلڈ کپ فائنلز کی بات کریں تو…'],
-  [39.1, 46.6, 'کپتانی کا ریکارڈ'],
-  [46.7, 56.8, 'اب اصل ریکارڈ!'],
-  [56.9, 63.2, 'لیکن یاد رکھیے…'],
-];
+const T_INTRO = 4.4, STEP = 4.55, T_OUT = T_INTRO + STEPS.length * STEP; // 4.4 + 54.6 = 59.0 ; outro to 63.5
+const SC = [{ id: 'intro', a: 0, b: T_INTRO }, ...STEPS.map((s, i) => ({ id: 'step', i, a: T_INTRO + i * STEP, b: T_INTRO + (i + 1) * STEP })), { id: 'outro', a: T_OUT, b: DUR }];
 
 // ---------------- drawing helpers ----------------
 function rr(x, y, w, h, r) { g.beginPath(); g.roundRect(x, y, w, h, r); }
-function text(str, x, y, { size = 40, font = UR, color = '#fff', weight = 700, align = 'center', glow = null, blur = 18, stroke = null, sw = 6, dir = 'rtl', alpha = 1, maxW = null } = {}) {
+function text(str, x, y, { size = 40, font = UR, color = '#fff', weight = 700, align = 'center', glow = null, blur = 18, stroke = null, sw = 6, dir = 'ltr', alpha = 1, maxW = null } = {}) {
   g.save(); g.globalAlpha *= alpha; g.direction = dir; g.textAlign = align; g.textBaseline = 'middle';
   let fs = size; g.font = `${weight} ${fs}px ${font}`; if (maxW) while (g.measureText(str).width > maxW && fs > 10) { fs -= 1; g.font = `${weight} ${fs}px ${font}`; }
   if (stroke) { g.lineJoin = 'round'; g.lineWidth = sw; g.strokeStyle = stroke; g.strokeText(str, x, y); }
@@ -113,76 +107,58 @@ function colHeads(k, y = P.y0 + 122) { const pad = 12, gap = 10, cw = (P.w - pad
   text('بابر اعظم', xb, y, { size: 27, color: '#7dffb6', alpha: k }); text('ویرات کوہلی', xk, y, { size: 27, color: '#8fb8ff', alpha: k }); }
 
 // ---------------- scenes ----------------
-function scIntro(t, u, k) {
-  const a = ramp(t, .3, 1.0), b = ramp(t, .8, 1.5), c = ramp(t, 1.3, 2.0), d = ramp(t, 2.4, 3.2);
-  g.save(); const s1 = .7 + .3 * back(a); g.translate(P.cx, P.y0 + 170); g.scale(s1, s1); text('بابر اعظم', 0, 0, { size: 78, color: '#7dffb6', alpha: a, glow: 'rgba(30,220,110,.8)', blur: 30 }); g.restore();
-  text('بمقابلہ', P.cx, P.y0 + 290, { size: 46, color: GOLD, alpha: b, glow: 'rgba(255,190,40,.7)' });
-  g.save(); const s3 = .7 + .3 * back(c); g.translate(P.cx, P.y0 + 410); g.scale(s3, s3); text('ویرات کوہلی', 0, 0, { size: 74, color: '#9cc2ff', alpha: c, glow: 'rgba(50,120,255,.85)', blur: 30 }); g.restore();
-  g.save(); g.globalAlpha = easeOut(d); rr(P.x0 + 30, P.y0 + 515, P.w - 60, 100, 18); g.fillStyle = 'rgba(200,20,20,.85)'; g.fill(); g.lineWidth = 3; g.strokeStyle = GOLD; g.stroke(); g.restore();
-  text('کون کس سے آگے؟', P.cx, P.y0 + 565, { size: 52, alpha: d, glow: 'rgba(0,0,0,.6)' });
-  sideGlow('b', a * (1 - ramp(t, 4.6, 5.4)), t); sideGlow('k', c * (1 - ramp(t, 4.6, 5.4)), t);
+function bigCard(x, y, w, h, side, k, win, t) { card(x, y, w, h, side, k, win, t); if (win && k > .9) arrow(x + w / 2, y - 4, ramp(k, .9, 1)); }
+function arrow(x, y, k) { g.save(); g.translate(x, y); g.scale(back(k), back(k)); g.fillStyle = GOLD; g.shadowColor = 'rgba(255,200,40,.9)'; g.shadowBlur = 14; g.beginPath(); g.moveTo(0, -20); g.lineTo(18, 8); g.lineTo(-18, 8); g.closePath(); g.fill(); g.restore(); }
+function title(str, k, y = P.y0 + 92) {
+  const e = easeOut(k); g.save(); g.globalAlpha = e;
+  const w = P.w - 24, x = P.cx - w / 2; const gr = g.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, 'rgba(255,207,74,0)'); gr.addColorStop(.5, 'rgba(255,207,74,.24)'); gr.addColorStop(1, 'rgba(255,207,74,0)');
+  g.fillStyle = gr; g.fillRect(x, y - 40, w, 80); g.fillStyle = GOLD; g.fillRect(P.cx - 80 * e, y + 44, 160 * e, 4); g.restore();
+  g.save(); g.translate(P.cx, y); const sc = .85 + .15 * back(k); g.scale(sc, sc); text(str, 0, 0, { size: 52, weight: 900, alpha: e, glow: 'rgba(255,190,40,.6)', blur: 22, maxW: P.w - 50 }); g.restore();
 }
-function scNames(t, u, k) {
-  const t0 = SC[1].a; header('کرکٹ کے 2 بڑے نام', k);
-  const r = row(P.y0 + 170, 120, null, 'پاکستان', 'بھارت', ramp(t, t0 + .5, t0 + 1.4), t, { size: 52, bSub: 'بابر اعظم', kSub: 'ویرات کوہلی' });
-  const q = ramp(t, t0 + 2.2, t0 + 3.0);
-  g.save(); g.globalAlpha = easeOut(q); g.translate(P.cx, P.y0 + 470); g.scale(.8 + .2 * back(q), .8 + .2 * back(q));
-  text('اعداد و شمار کی جنگ', 0, -30, { size: 46, color: GOLD, glow: 'rgba(255,190,40,.6)' }); text('میں کون آگے ہے؟', 0, 50, { size: 50 }); g.restore();
-  // big digits teaser: total runs flashing
-  const z = ramp(t, t0 + 3.6, t0 + 4.4); text('⚔', P.cx, P.y0 + 600, { size: 54, font: NUM, alpha: z, color: '#fff', glow: 'rgba(255,255,255,.6)' });
+function valueText(v, x, y, kind, c, a, side) {
+  if (kind === 'date') { const parts = v.split(' '); text(parts[0] + ' ' + parts[1], x, y - 34, { size: 64, weight: 900, alpha: a, glow: 'rgba(0,0,0,.5)' }); text(parts[2], x, y + 44, { size: 54, weight: 800, alpha: a, color: side === 'b' ? '#d8ffe8' : '#dbe7ff' }); }
+  else if (kind === 'year') text(String(Math.round(lerp(1990, v, c))), x, y, { size: 92, weight: 900, alpha: a, glow: 'rgba(0,0,0,.5)' });
+  else text(fmt(v * c), x, y, { size: v > 9999 ? 66 : 104, weight: 900, alpha: a, glow: 'rgba(0,0,0,.5)', maxW: 220 });
 }
-function scBorn(t, u, k) {
-  const t0 = SC[2].a; header('پیدائش', k); colHeads(ramp(t, t0 + .3, t0 + .8));
-  row(P.y0 + 230, 130, 'تاریخِ پیدائش', '15 اکتوبر 1994', '5 نومبر 1988', ramp(t, t0 + .6, t0 + 1.6), t, { size: 38 });
-  row(P.y0 + 445, 110, 'شہر', 'لاہور', 'دہلی', ramp(t, t0 + 2.4, t0 + 3.4), t, { size: 52 });
-  sideGlow('b', ramp(t, t0 + .6, t0 + 1.2) * (1 - ramp(t, t0 + 6.4, t0 + 7)) * .6, t); sideGlow('k', ramp(t, t0 + 1.0, t0 + 1.6) * (1 - ramp(t, t0 + 6.4, t0 + 7)) * .6, t);
+function chip(x, y, label, on, k) { g.save(); g.globalAlpha *= k; rr(x - 70, y - 30, 140, 60, 30); g.fillStyle = on ? 'rgba(255,207,74,.95)' : 'rgba(255,255,255,.07)'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = on ? GOLD : 'rgba(255,255,255,.3)'; g.stroke();
+  text(label, x, y + 1, { size: 32, weight: 900, color: on ? '#2a1600' : 'rgba(255,255,255,.4)' }); if (!on) { g.strokeStyle = 'rgba(255,70,50,.95)'; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 52, y - 18); g.lineTo(x + 52, y + 18); g.stroke(); } g.restore(); }
+function scStep(t, sc) {
+  const [ttl, bv, kv, kind, lead] = STEPS[sc.i], t0 = sc.a; title(ttl, ramp(t, t0, t0 + .6));
+  const pad = 14, gap = 12, cw = (P.w - pad * 2 - gap) / 2, xb = P.x0 + pad, xk = xb + cw + gap, y = P.y0 + 200, h = 300;
+  const kb = easeOut(ramp(t, t0 + .35, t0 + 1.0)), kk = easeOut(ramp(t, t0 + .6, t0 + 1.25)); const c = easeOut(ramp(t, t0 + .7, t0 + 2.3));
+  const win = (s) => lead === s && t > t0 + 2.4;
+  if (kind === 'formats') {
+    bigCard(xb - (1 - kb) * 50, y, cw, 420, 'b', kb, false, t); bigCard(xk + (1 - kk) * 50, y, cw, 420, 'k', kk, false, t);
+    ['TEST', 'ODI', 'T20'].forEach((f, i) => { const kc = ramp(t, t0 + 1.0 + i * .35, t0 + 1.5 + i * .35); chip(xb + cw / 2, y + 90 + i * 120, f, true, kc); chip(xk + cw / 2, y + 90 + i * 120, f, f === 'ODI', kc); });
+    sideGlow('b', ramp(t, t0 + 2.4, t0 + 3) * .8, t); return;
+  }
+  bigCard(xb - (1 - kb) * 50, y, cw, h, 'b', kb, win('b'), t); bigCard(xk + (1 - kk) * 50, y, cw, h, 'k', kk, win('k'), t);
+  valueText(bv, xb + cw / 2 - (1 - kb) * 50, y + h / 2, kind, c, kb, 'b'); valueText(kv, xk + cw / 2 + (1 - kk) * 50, y + h / 2, kind, c, kk, 'k');
+  if (kind === 'num') { const mx = Math.max(bv, kv), kbar = ramp(t, t0 + .7, t0 + 1.1); bar(xb, y + h + 40, cw, 16, bv / mx * c, 'b', kbar); bar(xk, y + h + 40, cw, 16, kv / mx * c, 'k', kbar); }
+  if (kind === 'date' || kind === 'year') { // timeline strip: older date sits further left
+    const kl = ramp(t, t0 + 1.2, t0 + 1.8); g.save(); g.globalAlpha = kl; g.fillStyle = 'rgba(255,255,255,.25)'; g.fillRect(xb, y + h + 46, xk + cw - xb, 3); g.restore();
+  }
+  if (lead) sideGlow(lead, ramp(t, t0 + 2.4, t0 + 3.0) * (1 - ramp(t, sc.b - .6, sc.b)) * .9, t);
 }
-function scStart(t, u, k) {
-  const t0 = SC[3].a; header('انٹرنیشنل کرکٹ کا آغاز', k); colHeads(ramp(t, t0 + .3, t0 + .8));
-  const c = easeOut(ramp(t, t0 + .8, t0 + 2.4));
-  const r = row(P.y0 + 235, 170, 'پہلا سال', String(Math.round(lerp(1990, 2015, c))), String(Math.round(lerp(1990, 2008, c))), ramp(t, t0 + .6, t0 + 1.5), t, { size: 82, nums: true, leader: t > t0 + 2.6 ? 'k' : null });
-  text('کوہلی 7 سال پہلے آئے', P.cx, P.y0 + 520, { size: 38, color: '#ffe9a8', alpha: ramp(t, t0 + 2.8, t0 + 3.4), glow: 'rgba(0,0,0,.8)' });
-  sideGlow('k', ramp(t, t0 + 2.6, t0 + 3.2) * (1 - ramp(t, t0 + 4.4, t0 + 5)), t);
+function scIntro(t) {
+  const a = ramp(t, .3, 1.0), b = ramp(t, .8, 1.4), c = ramp(t, 1.2, 1.9), d = ramp(t, 2.2, 2.9);
+  g.save(); g.translate(P.cx, P.y0 + 170); const s1 = .7 + .3 * back(a); g.scale(s1, s1); text('BABAR AZAM', 0, 0, { size: 68, weight: 900, color: '#7dffb6', alpha: a, glow: 'rgba(30,220,110,.8)', blur: 30 }); g.restore();
+  text('VS', P.cx, P.y0 + 275, { size: 64, weight: 900, color: GOLD, alpha: b, glow: 'rgba(255,190,40,.8)' });
+  g.save(); g.translate(P.cx, P.y0 + 380); const s3 = .7 + .3 * back(c); g.scale(s3, s3); text('VIRAT KOHLI', 0, 0, { size: 68, weight: 900, color: '#9cc2ff', alpha: c, glow: 'rgba(50,120,255,.85)', blur: 30 }); g.restore();
+  g.save(); g.globalAlpha = easeOut(d); rr(P.x0 + 30, P.y0 + 490, P.w - 60, 96, 18); g.fillStyle = 'rgba(200,20,20,.85)'; g.fill(); g.lineWidth = 3; g.strokeStyle = GOLD; g.stroke(); g.restore();
+  text("WHO'S AHEAD?", P.cx, P.y0 + 538, { size: 54, weight: 900, alpha: d });
+  sideGlow('b', a * (1 - ramp(t, 3.6, 4.3)), t); sideGlow('k', c * (1 - ramp(t, 3.6, 4.3)), t);
 }
-function scDebut(t, u, k) {
-  const t0 = SC[4].a; header('ڈیبیو کی تاریخیں', k); colHeads(ramp(t, t0 + .3, t0 + .8));
-  const rows = [['ODI ڈیبیو', '31 مئی 2015', '18 اگست 2008'], ['T20 ڈیبیو', '7 ستمبر 2016', '12 جون 2010'], ['Test ڈیبیو', '13 اکتوبر 2016', '20 جون 2011']];
-  rows.forEach(([lab, b, kk], i) => row(P.y0 + 228 + i * 158, 96, lab, b, kk, ramp(t, t0 + .7 + i * 2.6, t0 + 1.7 + i * 2.6), t, { size: 36 }));
+function scOutro(t, sc) {
+  const t0 = sc.a; title('FINAL TALLY', ramp(t, t0, t0 + .6), P.y0 + 80);
+  const rows = [['RUNS', 16038, 28527], ['100s', 32, 86], ['50s', 111, 148], ['WC FINALS', 1, 4]];
+  const pad = 14, gap = 12, cw = (P.w - pad * 2 - gap) / 2, xb = P.x0 + pad, xk = xb + cw + gap;
+  rows.forEach(([lab, b, k], i) => { const kr = easeOut(ramp(t, t0 + .4 + i * .3, t0 + 1.0 + i * .3)); const y = P.y0 + 170 + i * 118;
+    g.save(); g.globalAlpha = kr; text(lab, P.cx, y, { size: 26, weight: 800, color: GOLD }); g.restore();
+    card(xb, y + 20, cw, 76, 'b', kr, false, t); card(xk, y + 20, cw, 76, 'k', kr, true, t);
+    text(fmt(b), xb + cw / 2, y + 58, { size: 46, weight: 900, alpha: kr }); text(fmt(k), xk + cw / 2, y + 58, { size: 46, weight: 900, alpha: kr }); });
 }
-function scFinals(t, u, k) {
-  const t0 = SC[5].a; header('ورلڈ کپ فائنلز', k); colHeads(ramp(t, t0 + .3, t0 + .8));
-  const c = ramp(t, t0 + .9, t0 + 2.2); const r = row(P.y0 + 235, 170, 'کھیلے گئے فائنلز', String(Math.round(1 * easeOut(c))), String(Math.round(4 * easeOut(c))), ramp(t, t0 + .6, t0 + 1.4), t, { size: 96, nums: true, leader: t > t0 + 2.4 ? 'k' : null });
-  for (let i = 0; i < 1; i++) trophy(r.xb + r.cw / 2, P.y0 + 490, 1.1, ramp(t, t0 + 1.2, t0 + 1.6));
-  for (let i = 0; i < 4; i++) trophy(r.xk + r.cw / 2 + (i - 1.5) * 52, P.y0 + 490, 1.0, ramp(t, t0 + 1.2 + i * .25, t0 + 1.6 + i * .25));
-  sideGlow('k', ramp(t, t0 + 2.4, t0 + 3) * (1 - ramp(t, t0 + 4.6, t0 + 5.3)), t);
-}
-function scCapt(t, u, k) {
-  const t0 = SC[6].a; header('کپتانی', k); colHeads(ramp(t, t0 + .3, t0 + .8));
-  const c1 = easeOut(ramp(t, t0 + 1.0, t0 + 2.6)), c2 = easeOut(ramp(t, t0 + 3.2, t0 + 4.8));
-  const r = row(P.y0 + 230, 120, 'انٹرنیشنل میچز', fmt(152 * c1), fmt(213 * c1), ramp(t, t0 + .7, t0 + 1.5), t, { size: 66, nums: true, leader: t > t0 + 2.7 ? 'k' : null });
-  row(P.y0 + 425, 120, 'فتوحات', fmt(85 * c2), fmt(135 * c2), ramp(t, t0 + 2.9, t0 + 3.7), t, { size: 66, nums: true, leader: t > t0 + 4.9 ? 'k' : null });
-  const kb = ramp(t, t0 + 3.2, t0 + 3.8); bar(r.xb, P.y0 + 565, r.cw, 14, 85 / 135 * c2, 'b', kb); bar(r.xk, P.y0 + 565, r.cw, 14, 1 * c2, 'k', kb);
-  sideGlow('k', ramp(t, t0 + 4.9, t0 + 5.5) * (1 - ramp(t, t0 + 6.8, t0 + 7.5)), t);
-}
-function scRecord(t, u, k) {
-  const t0 = SC[7].a; header('اب اصل ریکارڈ!', k); colHeads(ramp(t, t0 + .3, t0 + .8));
-  const items = [['انٹرنیشنل رنز', 16038, 28527], ['سنچریاں', 32, 86], ['ففٹیز', 111, 148]];
-  items.forEach(([lab, b, kk], i) => { const s = t0 + .8 + i * 2.7, c = easeOut(ramp(t, s + .3, s + 2.0)); const y = P.y0 + 222 + i * 158;
-    const r = row(y, 96, lab, fmt(b * c), fmt(kk * c), ramp(t, s, s + .9), t, { size: 60, nums: true, leader: t > s + 2.1 ? 'k' : null });
-    const kb = ramp(t, s + .3, s + .8); bar(r.xb, y + 106, r.cw, 9, b / kk * c, 'b', kb); bar(r.xk, y + 106, r.cw, 9, 1 * c, 'k', kb); });
-  sideGlow('k', ramp(t, t0 + 8.6, t0 + 9.2) * (1 - ramp(t, t0 + 9.6, t0 + 10.2)) * .8, t);
-}
-function chip(x, y, label, on, k) { g.save(); g.globalAlpha *= k; rr(x - 52, y - 24, 104, 48, 24); g.fillStyle = on ? 'rgba(255,207,74,.95)' : 'rgba(255,255,255,.08)'; g.fill(); g.lineWidth = 2; g.strokeStyle = on ? GOLD : 'rgba(255,255,255,.3)'; g.stroke();
-  text(label, x, y + 1, { size: 26, font: NUM, dir: 'ltr', color: on ? '#2a1600' : 'rgba(255,255,255,.45)' }); if (!on) { g.strokeStyle = 'rgba(255,80,60,.9)'; g.lineWidth = 3; g.beginPath(); g.moveTo(x - 40, y - 14); g.lineTo(x + 40, y + 14); g.stroke(); } g.restore(); }
-function scFormats(t, u, k) {
-  const t0 = SC[8].a; header('لیکن یاد رکھیے…', k); colHeads(ramp(t, t0 + .3, t0 + .8));
-  const r = row(P.y0 + 230, 130, 'ابھی کون سی کرکٹ؟', 'تینوں فارمیٹس', 'صرف ODI', ramp(t, t0 + .7, t0 + 1.6), t, { size: 42 });
-  const kc = ramp(t, t0 + 1.8, t0 + 2.4); const yy = P.y0 + 440;
-  ['Test', 'ODI', 'T20'].forEach((f, i) => { chip(r.xb + r.cw / 2, yy + i * 62, f, true, ramp(t, t0 + 1.8 + i * .2, t0 + 2.2 + i * .2)); chip(r.xk + r.cw / 2, yy + i * 62, f, f === 'ODI', ramp(t, t0 + 1.8 + i * .2, t0 + 2.2 + i * .2)); });
-  const e = ramp(t, t0 + 3.6, t0 + 4.3);
-  sideGlow('b', ramp(t, t0 + 1.8, t0 + 2.6) * .8, t);
-}
-const DRAW = { intro: scIntro, names: scNames, born: scBorn, start: scStart, debut: scDebut, finals: scFinals, capt: scCapt, record: scRecord, formats: scFormats };
+const DRAW = { intro: (t, sc) => scIntro(t), step: scStep, outro: scOutro };
 
 // ---------------- frame ----------------
 function bgDraw(t) {
@@ -221,12 +197,12 @@ window.renderAt = function (t) {
   const sc = SC.find(s => t >= s.a && t < s.b) || SC[SC.length - 1];
   const kin = ramp(t, sc.a, sc.a + .5), kout = 1 - ramp(t, sc.b - .35, sc.b);
   g.save(); g.beginPath(); rr(P.x0, P.y0, P.w, P.h, 14); g.clip(); g.globalAlpha = kout;
-  g.translate((1 - easeOut(kin)) * 40, 0); DRAW[sc.id](t, (t - sc.a) / (sc.b - sc.a), kin); g.restore();
-  narrative(t); nameplates(t); transition(t); progress(t);
+  g.translate((1 - easeOut(kin)) * 40, 0); DRAW[sc.id](t, sc); g.restore();
+  transition(t); progress(t);
   if (t > DUR - .8) { g.fillStyle = `rgba(0,0,0,${ramp(t, DUR - .8, DUR)})`; g.fillRect(0, 0, S, S); }
   if (t < .4) { g.fillStyle = `rgba(0,0,0,${1 - ramp(t, 0, .4)})`; g.fillRect(0, 0, S, S); }
 };
 window.frame = t => { window.renderAt(t); return cv.toDataURL('image/jpeg', .94); };
 window.DUR = DUR;
-Promise.all([document.fonts.load('700 40px Nastaliq'), document.fonts.load('700 40px Naskh'), new Promise(r => bg.complete ? r() : bg.onload = r)]).then(() => { window.renderAt(1); window.READY = true; });
+Promise.all([document.fonts.load('900 40px Inter'), new Promise(r => bg.complete ? r() : bg.onload = r)]).then(() => { window.renderAt(1); window.READY = true; });
 </script></body></html>
