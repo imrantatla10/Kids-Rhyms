@@ -1,4 +1,4 @@
-# Natural sound design (NO music) + Adam voice-over (ElevenLabs, pauses tightened) -> audio/final_mix.wav
+# Natural sound design (NO music) + Adam voice-over (ElevenLabs take 2, pauses tightened) -> audio/final_mix.wav
 # Timeline matches src/scene.html (voice offset 0.8 s, duration 63.5 s). ch(i) = start of phrase i in video time.
 import numpy as np, subprocess, wave, json
 from scipy.signal import lfilter
@@ -34,8 +34,8 @@ def crunch():
 def beep(f, d=.08, a=1.0):
     n = int(d * SR); tt = np.arange(n) / SR; return np.sin(2 * np.pi * f * tt) * env_ar(n, .004, .02) * a
 def whoosh(dur, a0=.03, a1=.3):
-    n = int(dur * SR); x = rng.standard_normal(n); out = np.zeros(n); al = np.linspace(a0, a1, n)
-    for i in range(0, n, 256): out[i:i + 256] = lp(x[i:i + 256], al[i])
+    n = int(dur * SR); x = rng.standard_normal(n); k = np.linspace(0, 1, n)
+    out = lp(x, a0) * (1 - k) + lp(x, a1) * k
     return out * np.sin(np.linspace(0, np.pi, n)) ** 1.5
 def shutter():
     s = np.zeros(int(.12 * SR)); a = clank(2600, .05)[:len(s) // 3]; s[:len(a)] += a; b = clank(2200, .05)[:len(s) // 3]; s[int(.06 * SR):int(.06 * SR) + len(b)] += b * .8; return hp(s, .3)
@@ -92,7 +92,7 @@ n = int((ch(16) - ch(15) + .6) * SR); tt = np.arange(n) / SR; x = lp(rng.standar
 envj = np.exp(-((tt - (n / SR) * .55) / .8) ** 2); add(x * envj, ch(15) - .2, .45, -.3); add(np.roll(x, 600) * envj, ch(15) - .2, .45, .3)
 add(thud(1.8, 55, 30, .2, 2.0), ch(15), .45)
 # satellite: electronic shutter
-add(shutter() * .6 + np.pad(beep(2400, .04), (0, 0)) [:len(shutter())] * 0, ch(16) + 1.2, .25); add(beep(2400, .04), ch(16) + 1.25, .05)
+add(shutter() * .6, ch(16) + 1.2, .25); add(beep(2400, .04), ch(16) + 1.25, .05)
 # day→night: hangar doors + taxi whine
 n = int(1.2 * SR); add(lp(rng.standard_normal(n), .03) * env_ar(n, .2, .4) * 2, ch(17) + 2.0, .25)
 n = int((ch(18) - ch(17) - 2.2) * SR); tt = np.arange(n) / SR; add((np.sin(2 * np.pi * (900 + 200 * tt) * tt) * .2 + lp(rng.standard_normal(n), .05)) * np.clip(tt, 0, 1), ch(17) + 2.3, .12)
@@ -106,6 +106,10 @@ n = int((DUR - ch(23)) * SR); tt = np.arange(n) / SR; add(lp(rng.standard_normal
 add(thud(2.0, 50, 28, .2, 1.8), ch(23) + 2.2, .5)
 
 sfx = np.stack([L, R]); sfx /= np.abs(sfx).max()
+# SFX were laid out on the choreography (take 1) timeline; resample onto the video timeline of take 2
+WJ = json.load(open('audio/warp_take2.json')); VD = WJ['dur']; NV = int(SR * VD); tv = np.arange(NV) / SR
+tc = np.interp(tv, [a for a, b in WJ['warp']], [b for a, b in WJ['warp']])
+sfx = np.stack([np.interp(tc, t, ch_) for ch_ in sfx]); N = NV
 v = load('audio/voice_adam.mp3'); vo = np.zeros(N); i0 = int(OFF * SR); vo[i0:i0 + len(v)] = v[:N - i0]
 ve = np.convolve(np.abs(vo), np.ones(int(.12 * SR)) / int(.12 * SR), 'same'); duck = 1 - .45 * np.clip(ve * 10, 0, 1)
 mix = sfx * duck * .34 + vo[None, :]
@@ -113,4 +117,4 @@ fade = np.ones(N); fo = int(1.2 * SR); fade[-fo:] = np.linspace(1, 0, fo); fade[
 mix /= max(1e-6, np.abs(mix).max() / .95)
 with wave.open('audio/final_mix.wav', 'wb') as w:
     w.setnchannels(2); w.setsampwidth(2); w.setframerate(SR); w.writeframes((mix.T * 32767).astype(np.int16).tobytes())
-print('ok', DUR, 'voice end', OFF + len(v) / SR)
+print('ok', VD, 'voice end', OFF + len(v) / SR)

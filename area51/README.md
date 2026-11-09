@@ -1,10 +1,10 @@
 # How to Hide a Secret Plane (Area 51) — 3D cinematic (vertical 9:16)
 
-1080×1920, 30 fps, **63.5 s** (limit was 65 s). No background music.
+1080×1920, 30 fps, **63.7 s** (limit was 65 s). No background music.
 
 **Video:** [`output/Area51_Secret_Plane_vertical.mp4`](output/Area51_Secret_Plane_vertical.mp4)
 
-- **Voice:** ElevenLabs, voice *Adam* (premade, American), model `eleven_v4`, take 1. Pauses longer than 0.36 s were shortened (1.5 s saved in total) → `audio/voice_adam.mp3`. Phrase timings are in `audio/chunks.json`. ElevenLabs was used for the voice only.
+- **Voice:** ElevenLabs, voice *Adam* (premade, American), model `eleven_v4`, take 2. Pauses longer than 0.36 s were shortened (2.2 s saved in total; the animation was timed on take 1 and is time-warped to take 2 using `audio/warp_take2.json`) → `audio/voice_adam.mp3`. Phrase timings are in `audio/chunks.json`. ElevenLabs was used for the voice only.
 - **Visuals:** everything is procedural, built in three.js and rendered headless with Playwright. That covers:
   - the desert terrain, whose ring of mountains rises on cue
   - the hangar, runway, warning signs and boundary posts
