@@ -47,18 +47,18 @@ space_amb = seg_env(ch(16), ch(17), .15)
 under = seg_env(ch(18), ch(19), .2)
 wind = lp(rng.standard_normal(N), .012) * (0.6 + .4 * np.sin(2 * np.pi * .09 * t) * np.sin(2 * np.pi * .23 * t + 1))
 wind2 = hp(lp(rng.standard_normal(N), .08), .02) * .25 * (0.5 + .5 * np.sin(2 * np.pi * .17 * t))
-add((wind + wind2) * (day_ext * 1.0 + night * .45), 0, 1.2, -.35); add(np.roll(wind + wind2, 37000) * (day_ext + night * .45), 0, 1.2, .35)
+# removed on request: continuous wind-hiss background
 # crickets at night
 cr = np.zeros(N)
 for k, (f, pan) in enumerate([(4300, -.5), (4700, .4), (3900, .1)]):
     rate = 14 + k * 3; ph = rng.random()
     burst = (np.sin(2 * np.pi * rate * t + ph * 6) > .3).astype(float) * (np.sin(2 * np.pi * (.55 + k * .13) * t + k) > -.2)
     cr += np.sin(2 * np.pi * f * t) * lp(burst, .05) * (.6 + .4 * rng.random())
-add(cr * night, 0, .028)
+# removed on request: cricket chirp background
 # space: deep near-silent hum
-add((np.sin(2 * np.pi * 48 * t) * .3 + lp(rng.standard_normal(N), .004) * 2) * space_amb, 0, .25)
+add((np.sin(2 * np.pi * 48 * t) * .3) * space_amb, 0, .25)   # tonal only (hiss removed)
 # underground: hum + drips
-add((np.sin(2 * np.pi * 60 * t) * .2 + np.sin(2 * np.pi * 120 * t) * .1 + lp(rng.standard_normal(N), .01)) * under, 0, .35)
+add((np.sin(2 * np.pi * 60 * t) * .2 + np.sin(2 * np.pi * 120 * t) * .1) * under, 0, .35)   # tonal only (hiss removed)
 for k in np.arange(ch(18) + 2.2, ch(19), .9): add(beep(1800 + rng.random() * 800, .03, .5), k, .06, rng.random() - .5)
 
 # ---------- events ----------
