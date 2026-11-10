@@ -6,3 +6,5 @@ output/log_*.txt
 audio/take*.mp3
 audio/final_mix.wav
 output/crop.jpg
+output/sample/
+output/sample_sheet.jpg

@@ -5,11 +5,11 @@
 **Video:** [`output/How_To_Build_A_Grave_vertical.mp4`](output/How_To_Build_A_Grave_vertical.mp4)
 
 - **Voice:** ElevenLabs, voice *Adam* (premade, American), model `eleven_v4`, take 2. Pauses longer than 0.36 s were shortened (2.0 s saved) → `audio/voice_adam.mp3`. Phrase timings are in `audio/chunks.json`. ElevenLabs was used for the voice only.
-- **Visuals:** everything is procedural, built in three.js and rendered headless with Playwright:
-  - a sunny backyard: house, picket fence, trees and flower beds
-  - the digger (with shovel), a wrapped body and the fox
-  - a cut-away "ground diorama" showing the pit, the 6 FT / 4 FT ruler, the coffin rotting, the concrete burial vault, groundwater, the sealed casket, gas pressure, the lid bursting, the unlocked seal, and the headstone tipping then fixed by a concrete base
-  - colorful labels, banners and captions
+- **Visuals:** everything is procedural, built in three.js and rendered headless with Playwright. The style follows the user's sample video: one continuous cut-away of a sunny backyard. Above ground is a white two-storey house with blue shutters and an orange roof, plus the lawn, trees and flowers. Below is a deep brown earth cross-section with roots, and one-word captions run throughout.
+  - in the cut-away: the digger and the fox, the pit with its 6 FT / 4 FT ruler, the "ORDERS · LONDON 1665 · SIX FEET deep" notice, and the coffin rotting with the lawn sinking
+  - then: the concrete burial vault, rain with pressure arrows, the sealed casket, gas squiggles, the lid bursting and the unlocked seal
+  - finally: the headstone tipping then fixed by a concrete base, the cemetery rows, and the "BELOVED JOHN DOE" headstone with flowers
+  - the earlier diorama-style version is kept as `src/scene_v1_diorama.html`
 - **Sound:** synthesized one-off effects only (`src/build_audio.py`): birdsong, shovel, dirt, fox paws, coffin landing, wood creak, concrete thuds, droplets, seal click, gas groan, burst, stone grind, flower pops.
 
 ## Script (tightened to fit 65 s)
