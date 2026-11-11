@@ -5,13 +5,15 @@
 **Video:** [`output/Jungle_Tunnel_Base_vertical.mp4`](output/Jungle_Tunnel_Base_vertical.mp4)
 
 - **Voice:** ElevenLabs, voice *Adam* (premade, American), model `eleven_v4`, take 2. Pauses longer than 0.36 s were shortened → `audio/voice_adam.mp3`. Phrase timings are in `audio/chunks.json`. ElevenLabs was used for the voice only.
-- **Visuals:** everything is procedural, built in three.js and rendered headless with Playwright. The layout is one continuous cut-away of a jungle hill (the same style as the grave video). Each tunnel section appears as it is dug:
-  - the hidey hole (flooded by rain) and the sideways tunnel with its up-sloping floor (rain runs out)
-  - the zigzag (a grenade drops down the shaft and the blast hits the wall) and the water trap (poison gas stops at the water)
-  - the bamboo spike pit under a fake floor (the soldier drops in; nothing graphic is shown) and the air holes with soap (the dogs walk past)
-  - the secret entrance at the bottom of the river, with gently waving water
-  - the base: a hammock, a lantern, and a monkey stealing the banana
-- **Graphics:** clean white labels (HIDEY HOLE, TUNNEL, ZIGZAG, WATER TRAP, SPIKE TRAP, AIR HOLES, SOAP, SECRET ENTRANCE, HAMMOCK, LANTERN, MONKEY!), one-word captions, and a final "CONGRATULATIONS! TUNNEL BASE BUILT" card.
+- **Visuals:** everything is procedural, built in three.js and rendered headless with Playwright. The style follows the user's second sample video:
+  - **Look:** one continuous cut-away of a jungle hill in plain terracotta clay, with sharp straight-edged tunnels that show real depth (stacked wall layers behind the cut face) and murky green water.
+  - **Scenery and characters:** dense tall thin jungle trees, and a hider in dark clothes with a red headband.
+  - **Camera:** slightly angled, so the tunnel depth shows.
+  - **Story:** each tunnel section appears as it is dug.
+    - the hidey hole (flooded by rain), the sloped tunnel, and the zigzag (the grenade blast hits the wall)
+    - the water trap (the gas stops), the bamboo spike pit under a fake floor (nothing graphic is shown), and the air holes with soap (the dogs walk past)
+    - the river-bottom entrance, and the base with a hammock, a lantern and the banana-stealing monkey
+- **Graphics:** like the sample, there are no labels. Captions show two words at a time in the middle of the screen: the first word is white and the second is coloured (pink, yellow, green, cyan). The earlier labelled version is kept as `src/scene_v1.html`.
 - **Sound:** synthesized one-off effects only (`src/build_audio.py`).
 
 ## Script (tightened to fit 65 s)

@@ -70,7 +70,7 @@ const T = {
   zig: { pts: [[7.0, 3.4], [8.7, 3.0], [7.2, 2.45], [8.9, 1.95], [9.7, 1.95]], w: .95 },
   water: { pts: [[9.7, 1.95], [10.5, .35], [12.1, .35], [12.9, 1.95]], w: 1.0 },
   spike: { pts: [[12.9, 1.95], [16.4, 1.95]], w: 1.0, rects: [{ x: 14.0, y: -.35, w: 1.0, h: 1.9 }] },
-  base: { pts: [], w: 1, rects: [{ x: 16.2, y: 1.35, w: 3.2, h: 2.1, r: .5 }] },
+  base: { pts: [], w: 1, rects: [{ x: 16.2, y: 1.35, w: 3.2, h: 2.1, r: .02 }] },
   air: { pts: [[16.95, 3.2], [16.95, 6.0]], w: .16, extra: [[[18.6, 3.2], [18.6, 6.0]]] },
   river: { pts: [[-11.6, -2.6], [-10.6, -3.65], [-7.2, -3.65], [-5.7, -2.2], [-5, -1.75]], w: .95 },
 };
@@ -82,36 +82,34 @@ const px = x => (x - X0) * sx, py = y => (Y1 - y) * sy;
 // soil painting (shared base)
 const soilCanvas = document.createElement('canvas'); soilCanvas.width = CW; soilCanvas.height = CH;
 { const g = soilCanvas.getContext('2d');
-  const gr = g.createLinearGradient(0, py(6), 0, py(-6)); gr.addColorStop(0, '#5a3418'); gr.addColorStop(.35, '#6b3e1c'); gr.addColorStop(.7, '#7a4820'); gr.addColorStop(1, '#5e3616'); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
-  for (let i = 0; i < 9; i++) { g.fillStyle = `rgba(${rnd() < .5 ? '30,15,5' : '160,100,50'},.08)`; const y = rnd() * CH; g.beginPath(); g.moveTo(0, y); for (let x = 0; x <= CW; x += 64) g.lineTo(x, y + Math.sin(x * .004 + i) * 20 + 40); g.lineTo(CW, y + 140); g.lineTo(0, y + 140); g.fill(); }
-  speckle(g, CW, CH, 260000, .28, 3);
-  for (let i = 0; i < 900; i++) { const dk = rnd() < .55; g.fillStyle = dk ? `rgba(35,18,8,${.35 + rnd() * .4})` : `rgba(${160 + rnd() * 60 | 0},${110 + rnd() * 50 | 0},${70 + rnd() * 30 | 0},.75)`; g.beginPath(); g.ellipse(rnd() * CW, rnd() * CH, 2 + rnd() * 8, 2 + rnd() * 6, rnd() * 3, 0, 7); g.fill(); }
-  g.strokeStyle = 'rgba(200,150,100,.35)'; for (let i = 0; i < 220; i++) { let x = rnd() * CW, y = py(surf(X0 + x / sx)) + 4; g.lineWidth = 1 + rnd() * 2.5; g.beginPath(); g.moveTo(x, y); for (let k = 0; k < 10; k++) { x += rnd() * 26 - 13; y += 8 + rnd() * 14; g.lineTo(x, y); } g.stroke(); }
-  // topsoil band + grass lip along the profile
-  g.lineJoin = 'round'; g.beginPath(); for (let x = X0; x <= X1; x += .05) { const X = px(x), Y = py(surf(x)); x === X0 ? g.moveTo(X, Y) : g.lineTo(X, Y); } g.strokeStyle = 'rgba(40,22,10,.7)'; g.lineWidth = 30; g.stroke(); g.strokeStyle = '#3f8f2c'; g.lineWidth = 10; g.stroke(); }
+  const gr = g.createLinearGradient(0, py(6), 0, py(-12)); gr.addColorStop(0, '#8e4426'); gr.addColorStop(.5, '#863e22'); gr.addColorStop(1, '#76361e'); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
+  for (let i = 0; i < 60; i++) { g.fillStyle = `rgba(${rnd() < .5 ? '90,30,10' : '230,140,90'},.035)`; g.beginPath(); g.ellipse(rnd() * CW, rnd() * CH, 80 + rnd() * 260, 40 + rnd() * 120, rnd() * 3, 0, 7); g.fill(); }
+  speckle(g, CW, CH, 40000, .05, 2);
+  g.lineJoin = 'round'; g.beginPath(); for (let x = X0; x <= X1; x += .05) { const X = px(x), Y = py(surf(x)); x === X0 ? g.moveTo(X, Y) : g.lineTo(X, Y); } g.strokeStyle = 'rgba(110,50,20,.6)'; g.lineWidth = 18; g.stroke(); g.strokeStyle = '#3f7f2c'; g.lineWidth = 9; g.stroke(); }
 function tunnelPath(g, key, cut, pad = 0) { const tn = T[key]; const polys = [tn.pts, ...(tn.extra || [])].filter(p => p.length);
-  for (const pts of polys) { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(px(x), py(y)) : g.moveTo(px(x), py(y))); g.lineWidth = tn.w * sx + (cut ? pad : 18); g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke(); }
-  for (const r of tn.rects || []) { g.beginPath(); const q = cut ? pad / 2 : 9; g.roundRect(px(r.x) - q, py(r.y + r.h) - q, r.w * sx + 2 * q, r.h * sy + 2 * q, (r.r || .08) * sx); g.fill(); } }
+  for (const pts of polys) { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(px(x), py(y)) : g.moveTo(px(x), py(y))); g.lineWidth = tn.w * sx + (cut ? pad : 18); g.lineCap = 'butt'; g.lineJoin = 'miter'; g.miterLimit = 6; g.stroke(); }
+  for (const r of tn.rects || []) { g.beginPath(); const q = cut ? pad / 2 : 9; g.roundRect(px(r.x) - q, py(r.y + r.h) - q, r.w * sx + 2 * q, r.h * sy + 2 * q, (r.r || .02) * sx * .2); g.fill(); } }
 function frontTex(keys) { // soil with tunnels cut out (alpha) and a shaded rim
   return canvasTex(CW, CH, (g) => { g.drawImage(soilCanvas, 0, 0);
-    g.strokeStyle = 'rgba(25,12,4,.65)'; g.fillStyle = 'rgba(25,12,4,.65)'; for (const k of keys) tunnelPath(g, k, false);
+    g.strokeStyle = 'rgba(120,45,15,.25)'; g.fillStyle = 'rgba(120,45,15,.25)'; for (const k of keys) tunnelPath(g, k, false);
     g.globalCompositeOperation = 'destination-out'; g.strokeStyle = '#000'; g.fillStyle = '#000'; for (const k of keys) tunnelPath(g, k, true);
     g.beginPath(); g.moveTo(0, 0); for (let x = X0; x <= X1; x += .05) g.lineTo(px(x), py(surf(x)) + 2); g.lineTo(CW, 0); g.closePath(); g.fill(); }, [1, 1]);
 }
-function backTex(keys) { return canvasTex(CW, CH, (g) => { g.strokeStyle = '#3a2210'; g.fillStyle = '#3a2210'; for (const k of keys) tunnelPath(g, k, true, .9 * sx);
+function backTex(keys) { return canvasTex(CW, CH, (g) => { g.strokeStyle = '#6e2c12'; g.fillStyle = '#6e2c12'; for (const k of keys) tunnelPath(g, k, true, .9 * sx);
   g.globalCompositeOperation = 'source-atop'; const img = soilCanvas; g.globalAlpha = .35; g.drawImage(img, 0, 0); g.globalAlpha = 1; const gr = g.createLinearGradient(0, 0, 0, CH); gr.addColorStop(0, 'rgba(255,190,120,.15)'); gr.addColorStop(1, 'rgba(0,0,0,.25)'); g.fillStyle = gr; g.fillRect(0, 0, CW, CH);
   g.globalCompositeOperation = 'destination-out'; g.fillStyle = '#000'; g.beginPath(); g.moveTo(0, 0); for (let x = X0; x <= X1; x += .05) g.lineTo(px(x), py(surf(x)) + 2); g.lineTo(CW, 0); g.closePath(); g.fill(); }, [1, 1]); }
 const FRONT = STAGES.map(frontTex), BACK = STAGES.map(backTex);
 const faceGeo = new THREE.PlaneGeometry(X1 - X0, Y1 - Y0); faceGeo.translate((X0 + X1) / 2, (Y0 + Y1) / 2, 0);
 const faceMat = new THREE.MeshStandardMaterial({ map: FRONT[0], transparent: true, alphaTest: .5, roughness: 1 });
 const face = new THREE.Mesh(faceGeo, faceMat); face.receiveShadow = true; scene.add(face);
+const layerMats = []; for (let k = 1; k <= 10; k++) { const m = new THREE.MeshStandardMaterial({ map: FRONT[0], transparent: true, alphaTest: .5, roughness: 1, color: new THREE.Color().setRGB(lerp(.86, .5, k / 10), lerp(.82, .42, k / 10), lerp(.8, .4, k / 10)) }); layerMats.push(m); const l = new THREE.Mesh(faceGeo, m); l.position.z = -.082 * k; scene.add(l); }
 const backMat = new THREE.MeshStandardMaterial({ map: BACK[0], transparent: true, alphaTest: .5, roughness: 1 });
 const backWall = new THREE.Mesh(faceGeo, backMat); backWall.position.z = -.9; backWall.receiveShadow = true; scene.add(backWall);
 // "still being dug" overlay: previous stage's face, clipped by a moving plane
 const digClip = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0);
 const digMat = new THREE.MeshStandardMaterial({ map: FRONT[0], transparent: true, alphaTest: .5, roughness: 1, clippingPlanes: [digClip] });
 const digFace = new THREE.Mesh(faceGeo, digMat); digFace.position.z = .004; scene.add(digFace);
-function setStage(i, digFrom = null, dig = 1, dir = V(1, 0, 0), origin = 0) { faceMat.map = FRONT[i]; backMat.map = BACK[i];
+function setStage(i, digFrom = null, dig = 1, dir = V(1, 0, 0), origin = 0) { faceMat.map = FRONT[i]; backMat.map = BACK[i]; for (const m of layerMats) m.map = FRONT[i];
   if (digFrom !== null && dig < 1) { digFace.visible = true; digMat.map = FRONT[digFrom]; digClip.normal.copy(dir).normalize(); digClip.constant = -(origin + dig * 1) ; } else digFace.visible = false; }
 // ground behind the cut (extruded profile), grass on top
 const grassTex = canvasTex(512, 512, (g, w, h) => { g.fillStyle = '#3f8f2c'; g.fillRect(0, 0, w, h); for (let i = 0; i < 16000; i++) { const v = rnd(); g.strokeStyle = `rgba(${40 + v * 60 | 0},${120 + v * 80 | 0},${30 + v * 40 | 0},.8)`; g.lineWidth = 1.3; const x = rnd() * w, y = rnd() * h; g.beginPath(); g.moveTo(x, y); g.lineTo(x + rnd() * 4 - 2, y - 4 - rnd() * 7); g.stroke(); } }, [1, 1]);
@@ -135,7 +133,7 @@ sky.frustumCulled = false; scene.add(sky);
 const sun = new THREE.DirectionalLight('#fff3dc', 3.2); sun.position.set(8, 22, 16); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
 Object.assign(sun.shadow.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 90 }); sun.shadow.bias = -.0004; sun.shadow.normalBias = .03; sun.target.position.set(3, 0, -4); scene.add(sun, sun.target);
 const hemi = new THREE.HemisphereLight('#cfe8ff', '#5a4a2a', .8); scene.add(hemi);
-const fillL = new THREE.DirectionalLight('#ffe6cc', .75); fillL.position.set(2, 3, 12); scene.add(fillL);
+const fillL = new THREE.DirectionalLight('#ffe6cc', .6); fillL.position.set(2, 3, 12); scene.add(fillL);
 const clouds = []; for (let i = 0; i < 12; i++) { const c = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, color: '#ffffff', transparent: true, opacity: .95, depthWrite: false, fog: false })); c.scale.set(70 + rnd() * 60, 30 + rnd() * 20, 1); c.position.set(-300 + rnd() * 600, 70 + rnd() * 70, -320 - rnd() * 150); scene.add(c); clouds.push(c); }
 for (let i = 0; i < 9; i++) { const m = new THREE.Mesh(new THREE.ConeGeometry(30 + rnd() * 25, 25 + rnd() * 20, 7), new THREE.MeshStandardMaterial({ color: '#4a8a5a', roughness: 1, flatShading: true })); m.position.set(-150 + i * 40, 8, -160 - rnd() * 40); scene.add(m); }
 const leafM = [new THREE.MeshStandardMaterial({ color: '#2f8a2f', roughness: .85, side: THREE.DoubleSide }), new THREE.MeshStandardMaterial({ color: '#4aa83a', roughness: .85, side: THREE.DoubleSide }), new THREE.MeshStandardMaterial({ color: '#1f6f2a', roughness: .85, side: THREE.DoubleSide })];
@@ -150,13 +148,16 @@ function bush(x, z, s) { const g = new THREE.Group(); g.position.set(x, surf(x),
 function fern(x, z, s) { const g = new THREE.Group(); g.position.set(x, surf(x), z); g.scale.setScalar(s); scene.add(g); for (let i = 0; i < 7; i++) { const fg = new THREE.PlaneGeometry(.9, .18, 4, 1); fg.translate(.45, 0, 0); const f = new THREE.Mesh(fg, leafM[i % 3]); f.rotation.set(0, i / 7 * 6.283, .7); g.add(f); } return g; }
 for (let i = 0; i < 70; i++) { const x = X0 + 1 + rnd() * (X1 - X0 - 2); if (x > RIVER.x0 - .5 && x < RIVER.x1 + .5) continue; const z = -2.5 - rnd() * 22; const r = rnd(); if (r < .35) palm(x, z, .9 + rnd() * .5); else if (r < .7) broad(x, z, .8 + rnd() * .6, i); else bush(x, z, 1.2 + rnd()); }
 for (let i = 0; i < 90; i++) { const x = X0 + 1 + rnd() * (X1 - X0 - 2); if (x > RIVER.x0 - .2 && x < RIVER.x1 + .2) continue; const z = -.9 - rnd() * 2.2; if (rnd() < .5) fern(x, z, .8 + rnd() * .6); else bush(x, z, .5 + rnd() * .5); }
+for (let i = 0; i < 120; i++) { const x = X0 + 1 + rnd() * (X1 - X0 - 2); if (x > RIVER.x0 - .5 && x < RIVER.x1 + .5) continue; const z = -3 - rnd() * 30, h = 7 + rnd() * 8; const g = new THREE.Group(); g.position.set(x, surf(x), z); scene.add(g);
+  const tr = new THREE.Mesh(new THREE.CylinderGeometry(.07, .12, h, 6), new THREE.MeshStandardMaterial({ color: '#6a5a44', roughness: 1 })); tr.position.y = h / 2; tr.castShadow = true; g.add(tr);
+  for (let k = 0; k < 4; k++) { const f = new THREE.Mesh(new THREE.IcosahedronGeometry(.7 + rnd() * .6, 1), leafM[2 - (k % 2)]); f.position.set((rnd() - .5) * 1.4, h - .5 + rnd() * 1.4, (rnd() - .5) * 1.4); f.castShadow = true; g.add(f); } }
 // river water (gentle waves)
-const riverMat = new THREE.MeshStandardMaterial({ color: '#2a8ab0', roughness: .08, metalness: .1, transparent: true, opacity: .78, envMap: envTex, envMapIntensity: .9 });
+const riverMat = new THREE.MeshStandardMaterial({ color: '#4a8a66', roughness: .08, metalness: .1, transparent: true, opacity: .78, envMap: envTex, envMapIntensity: .9 });
 const riverTop = new THREE.Mesh(new THREE.PlaneGeometry(RIVER.x1 - RIVER.x0 + .6, 40, 60, 120), riverMat); riverTop.rotation.x = -Math.PI / 2; riverTop.position.set((RIVER.x0 + RIVER.x1) / 2, RIVER.level, -20); scene.add(riverTop);
 const riverBase = riverTop.geometry.attributes.position.array.slice();
 function waves(t) { const p = riverTop.geometry.attributes.position; for (let i = 0; i < p.count; i++) { const x = riverBase[i * 3], y = riverBase[i * 3 + 1]; p.setZ(i, .05 * Math.sin(x * 2.1 + t * 1.7) + .04 * Math.sin(y * 1.3 - t * 2.3) + .025 * Math.sin((x + y) * 3.7 + t * 3.1)); } p.needsUpdate = true; riverTop.geometry.computeVertexNormals(); }
 { const s = new THREE.Shape(); s.moveTo(RIVER.x0, RIVER.level); for (let x = RIVER.x0; x <= RIVER.x1 + .01; x += .1) s.lineTo(x, Math.min(RIVER.level, surf(x))); s.lineTo(RIVER.x1, RIVER.level);
-  const m = new THREE.Mesh(new THREE.ShapeGeometry(s), new THREE.MeshStandardMaterial({ color: '#1f6f98', transparent: true, opacity: .72, roughness: .2 })); m.position.z = .01; scene.add(m);
+  const m = new THREE.Mesh(new THREE.ShapeGeometry(s), new THREE.MeshStandardMaterial({ color: '#3f7a58', transparent: true, opacity: .8, roughness: .2 })); m.position.z = .01; scene.add(m);
   for (let i = 0; i < 18; i++) { const r = new THREE.Mesh(new THREE.IcosahedronGeometry(.15 + rnd() * .2, 0), new THREE.MeshStandardMaterial({ color: '#7a7a72', roughness: .9 })); const x = RIVER.x0 + .5 + rnd() * 4.5; r.position.set(x, surf(x) + .05, -.2 - rnd() * .6); scene.add(r); } }
 
 // =====================================================================
@@ -185,7 +186,7 @@ function makePerson(o) {
 const JN = ['spine', 'neck', 'shL', 'elL', 'shR', 'elR', 'hipL', 'knL', 'hipR', 'knR'];
 function setPose(p, pose) { for (const j of JN) { const a = pose[j] || [0, 0, 0]; p.J[j].rotation.set(a[0], a[1], a[2]); } }
 const STAND = .955 * .85;
-const hider = makePerson({ shirt: '#3c5a2c', pants: '#1e1e22', band: '#d23a2a', scale: .85 });
+const hider = makePerson({ shirt: '#23273a', pants: '#1c1f2c', band: '#d23a2a', scale: .85 });
 const sold = [0, 1, 2].map(() => makePerson({ shirt: '#5a6b38', pants: '#4a5a30', helmet: '#3f4a2a', skin: '#d8a888', scale: .88 }));
 function walk(ph, a = 1) { const s = Math.sin(ph), c = Math.cos(ph); return { spine: [.06, 0, 0], hipL: [-.45 * s * a, 0, 0], hipR: [.45 * s * a, 0, 0], knL: [Math.max(0, .7 * c) * a + .05, 0, 0], knR: [Math.max(0, -.7 * c) * a + .05, 0, 0], shL: [.38 * s * a, 0, .1], shR: [-.38 * s * a, 0, -.1], elL: [-.3, 0, 0], elR: [-.3, 0, 0] }; }
 const crouch = { spine: [.45, 0, 0], neck: [-.2, 0, 0], hipL: [-1.9, 0, .15], hipR: [-1.9, 0, -.15], knL: [2.3, 0, 0], knR: [2.3, 0, 0], shL: [-.9, 0, .2], shR: [-.9, 0, -.2], elL: [-1.2, 0, 0], elR: [-1.2, 0, 0] };
@@ -243,7 +244,7 @@ fakeFloor.position.y = 1.45;
 // soap bars
 const soaps = [0, 1].map(i => { const s = new THREE.Mesh(new RoundedBoxGeometry(.22, .08, .14, 3, .03), new THREE.MeshStandardMaterial({ color: '#ffb6d6', roughness: .4 })); scene.add(s); return s; });
 // water volumes inside tunnels (behind the face)
-function waterBox() { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, .82), new THREE.MeshStandardMaterial({ color: '#2a9ad6', transparent: true, opacity: .75, roughness: .1, emissive: '#0a3a6a', emissiveIntensity: .3 })); m.position.z = -.45; scene.add(m); return m; }
+function waterBox() { const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, .82), new THREE.MeshStandardMaterial({ color: '#4f8a62', transparent: true, opacity: .8, roughness: .15, emissive: '#1a3a26', emissiveIntensity: .3 })); m.position.z = -.45; scene.add(m); return m; }
 const holeWater = waterBox(), trapWater = waterBox();
 function setWater(m, x0, x1, y0, y1) { m.visible = y1 - y0 > .01; m.scale.set(x1 - x0, Math.max(.01, y1 - y0), 1); m.position.set((x0 + x1) / 2, (y0 + y1) / 2, -.45); }
 
@@ -276,7 +277,7 @@ composer.addPass(new RenderPass(scene, cam)); const bloom = new UnrealBloomPass(
 const grade = new ShaderPass({ uniforms: { tDiffuse: { value: null }, uT: { value: 0 }, uFade: { value: 0 }, uShake: { value: 0 }, uRes: { value: new THREE.Vector2(W, H) } },
   vertexShader: `varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}`,
   fragmentShader: `uniform sampler2D tDiffuse; uniform float uT,uFade,uShake; uniform vec2 uRes; varying vec2 vUv; float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
-  void main(){ vec2 uv=vUv+uShake*vec2(sin(uT*90.),cos(uT*77.))*.008; vec3 c=texture2D(tDiffuse,uv).rgb; float l=dot(c,vec3(.299,.587,.114)); c=mix(vec3(l),c,1.15); c=mix(c,c*c*(3.-2.*c),.2);
+  void main(){ vec2 uv=vUv+uShake*vec2(sin(uT*90.),cos(uT*77.))*.008; vec3 c=texture2D(tDiffuse,uv).rgb; float l=dot(c,vec3(.299,.587,.114)); c=mix(vec3(l),c,.98); c=mix(c,c*c*(3.-2.*c),.2);
     vec2 d=vUv-.5; c*=mix(1.,smoothstep(1.,.35,length(d*vec2(1.,.62))),.35); c+=(h(vUv*uRes+fract(uT*7.)*91.)-.5)*.015; c*=1.-uFade; gl_FragColor=vec4(c,1.); }` });
 composer.addPass(grade);
 const OUT = document.createElement('canvas'); OUT.width = W; OUT.height = H; const og = OUT.getContext('2d'); const S = W / 1080;
@@ -284,10 +285,15 @@ let CHUNKS = [], WORDS = []; const ch = i => CHUNKS[i][0];
 function buildWords() { WORDS = []; for (const [a, b, str] of CHUNKS) { const tk = []; let hi = false; for (const part of str.split('*')) { for (const w of part.split(' ').filter(Boolean)) tk.push([w, hi]); hi = !hi; }
   const tot = tk.reduce((s, [w]) => s + w.length + 2, 0); let acc = 0; for (const [w, hi2] of tk) { const st = a + (b - a) * acc / tot; acc += w.length + 2; WORDS.push([st, a + (b - a) * acc / tot, w, hi2]); } }
   for (let i = 0; i < WORDS.length - 1; i++) WORDS[i][1] = Math.min(Math.max(WORDS[i][1], WORDS[i][0] + .18), WORDS[i + 1][0]); }
-function drawWord(t) { const w = WORDS.find(([a, b]) => t >= a && t < b + .12); if (!w) return; const [a, , word, hi] = w; const k = ramp(t, a, a + .1);
-  og.save(); og.translate(W / 2, H * .84); const sc = .75 + .25 * back(k); og.scale(sc, sc); og.font = `900 ${104 * S}px Inter`; og.textAlign = 'center'; og.textBaseline = 'middle';
-  og.lineJoin = 'round'; og.lineWidth = 16 * S; og.strokeStyle = 'rgba(0,0,0,.88)'; og.shadowColor = 'rgba(0,0,0,.5)'; og.shadowBlur = 18 * S; const tw = word.replace(/[,.!]$/, ''); og.strokeText(tw, 0, 0); og.shadowBlur = 0;
-  og.fillStyle = hi ? '#ffe14a' : '#ffffff'; og.fillText(tw, 0, 0); og.restore(); }
+const CAPCOL = ['#ff5aa8', '#ffd23a', '#5af06a', '#4ad8ff'];
+let PAIRS = [];
+function buildPairs() { PAIRS = []; let ci = 0; for (const [a, b, str] of CHUNKS) { const ws = str.replace(/\*/g, '').split(' ').filter(Boolean); const tot = ws.reduce((s, w) => s + w.length + 2, 0); let acc = 0;
+  for (let i = 0; i < ws.length; i += 2) { const grp = ws.slice(i, i + 2); const st = a + (b - a) * acc / tot; acc += grp.reduce((s, w) => s + w.length + 2, 0); PAIRS.push([st, a + (b - a) * acc / tot, grp, CAPCOL[ci++ % 4]]); } }
+  for (let i = 0; i < PAIRS.length - 1; i++) PAIRS[i][1] = Math.min(Math.max(PAIRS[i][1], PAIRS[i][0] + .25), PAIRS[i + 1][0]); }
+function drawWord(t) { const p = PAIRS.find(([a, b]) => t >= a && t < b + .12); if (!p) return; const [a, , grp, col] = p; const k = ramp(t, a, a + .1);
+  og.save(); og.translate(W / 2, H * .5); const sc = .85 + .15 * back(k); og.scale(sc, sc); og.font = `900 ${66 * S}px Inter`; og.textBaseline = 'middle'; og.textAlign = 'left';
+  const words = grp.map(w => w.replace(/[,.!?]$/, '').toUpperCase()); const sp = og.measureText(' ').width; const ws = words.map(w => og.measureText(w).width); let x = -(ws.reduce((s, v) => s + v, 0) + sp * (words.length - 1)) / 2;
+  words.forEach((w, i) => { og.lineJoin = 'round'; og.lineWidth = 12 * S; og.strokeStyle = 'rgba(0,0,0,.9)'; og.strokeText(w, x, 0); og.fillStyle = i === 1 ? col : '#ffffff'; og.fillText(w, x, 0); x += ws[i] + sp; }); og.restore(); }
 function project(v) { const p = v.clone().project(cam); return [(p.x * .5 + .5) * W, (-p.y * .5 + .5) * H, p.z]; }
 // clean label: white pill + dark text, leader line to a 3D point
 function label(t, a, b, anchor, txt, col = '#ff8a1a', dx = 0, dy = -220) { const k = easeOut(ramp(t, a, a + .35)) * (1 - ramp(t, b - .25, b)); if (k <= 0) return; const [x, y, z] = project(anchor); if (z > 1) return;
@@ -300,13 +306,13 @@ function finale(t, a) { const k = easeOut(ramp(t, a, a + .5)); if (k <= 0) retur
   const w = 940 * S, h = 230 * S; og.shadowColor = 'rgba(0,0,0,.4)'; og.shadowBlur = 30 * S; og.fillStyle = '#ffffff'; og.beginPath(); og.roundRect(-w / 2, -h / 2, w, h, 40 * S); og.fill(); og.shadowBlur = 0; og.lineWidth = 9 * S; og.strokeStyle = '#3ac05a'; og.stroke();
   og.textAlign = 'center'; og.textBaseline = 'middle'; og.fillStyle = '#2f9a3a'; og.font = `900 ${60 * S}px Inter`; og.fillText('CONGRATULATIONS!', 0, -45 * S); og.fillStyle = '#1a1a1a'; og.font = `900 ${74 * S}px Inter`; og.fillText('TUNNEL BASE BUILT', 0, 45 * S); og.restore(); }
 let OV = {};
-function drawOverlay(t) { og.clearRect(0, 0, W, H); og.drawImage(renderer.domElement, 0, 0); if (OV.labels) for (const l of OV.labels) label(t, ...l); if (OV.finale) finale(t, OV.finale); drawWord(t); return OUT; }
+function drawOverlay(t) { og.clearRect(0, 0, W, H); og.drawImage(renderer.domElement, 0, 0); drawWord(t); return OUT; }
 
 // =====================================================================
 //  CHOREOGRAPHY
 // =====================================================================
 let FOV = 50, FX = {};
-function look(pos, tgt, fov = 50, shake = 0, t = 0) { const p = pos.clone(); if (shake) { p.x += shake * Math.sin(t * 37); p.y += shake * Math.cos(t * 29); } cam.position.copy(p); cam.lookAt(tgt); cam.fov = fov; FOV = fov; cam.updateProjectionMatrix(); }
+function look(pos, tgt, fov = 50, shake = 0, t = 0) { const p = pos.clone(); p.x += 1.1; p.z -= .3; if (shake) { p.x += shake * Math.sin(t * 37); p.y += shake * Math.cos(t * 29); } cam.position.copy(p); cam.lookAt(tgt); cam.fov = fov; FOV = fov; cam.updateProjectionMatrix(); }
 let SHOTS = [];
 function buildShots() { const c = ch; SHOTS = [['hide', 0, c(2)], ['rain', c(2), c(3)], ['side', c(3), c(5)], ['grenade', c(5), c(6)], ['blast', c(6), c(8)], ['gas', c(8), c(12)], ['crawl', c(12), c(14)], ['drop', c(14), c(16)],
   ['dogs', c(16), c(19)], ['river', c(19), c(22)], ['base', c(22), DUR]]; }
@@ -397,7 +403,7 @@ window.renderAt = function (t) {
 };
 window.frame = (t) => { window.renderAt(t); return drawOverlay(t).toDataURL('image/jpeg', 0.92); };
 window.DUR = DUR;
-const cj = await (await fetch('/audio/chunks.json')).json(); CHUNKS = cj.map(([a, b, s]) => [a + OFF, b + OFF, s]); buildShots(); buildWords();
+const cj = await (await fetch('/audio/chunks.json')).json(); CHUNKS = cj.map(([a, b, s]) => [a + OFF, b + OFF, s]); buildShots(); buildWords(); buildPairs();
 await document.fonts.load('900 80px Inter');
 window.renderAt(1); window.READY = true;
 </script></body></html>
